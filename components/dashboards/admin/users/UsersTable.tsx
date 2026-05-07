@@ -22,7 +22,7 @@ const columns: ColumnDef<UserWithRelations>[] = [
   // },
   {
     accessorKey: "verification_id",
-    header: "Verification ID",
+    header: "PSN",
     cell: ({ row }) => <div className="font-medium">{row.getValue("verification_id") || "N/A"}</div>,
   },
   {
@@ -64,8 +64,24 @@ const columns: ColumnDef<UserWithRelations>[] = [
     },
   },
   {
+    id: "total_purchasing_unit",
+    header: "Total Purchasing Unit (₦)",
+    cell: ({ row }) => {
+      const salary = Number(row.original.salary_per_month || 0);
+      const totalPurchasingUnit = salary * 0.3;
+      return (
+        <div className="font-medium text-blue-700">
+          {new Intl.NumberFormat('en-NG', {
+            style: 'currency',
+            currency: 'NGN'
+          }).format(totalPurchasingUnit)}
+        </div>
+      );
+    },
+  },
+  {
     accessorKey: "loan_unit",
-    header: "Purchasing Unit (₦)",
+    header: "Purchasing Unit Remaining (₦)",
     cell: ({ row }) => {
       const amount = parseFloat(row.getValue("loan_unit") || "0");
       return (
@@ -121,7 +137,8 @@ interface ExportData {
   "Phone": string;
   "Government Entity": string;
   "Salary (₦)": string;
-  "Purchasing Unit (₦)": string;
+  "Total Purchasing Unit (₦)": string;
+  "Purchasing Unit Remaining (₦)": string;
   "Purchasing Unit Taken (₦)": string;
   "Status": string;
 }
@@ -185,7 +202,8 @@ export function AdminUsersTable({ initialUsers, token }: AdminUsersTableProps) {
       "Phone",
       "Government Entity",
       "Salary (₦)",
-      "Purchasing Unit (₦)",
+      "Total Purchasing Unit (₦)",
+      "Purchasing Unit Remaining (₦)",
       "Purchasing Unit Taken (₦)",
       "Status"
     ];
@@ -201,7 +219,11 @@ export function AdminUsersTable({ initialUsers, token }: AdminUsersTableProps) {
         style: 'currency',
         currency: 'NGN'
       }).format(parseFloat(user.salary_per_month?.toString() || "0")),
-      "Purchasing Unit (₦)": new Intl.NumberFormat('en-NG', {
+      "Total Purchasing Unit (₦)": new Intl.NumberFormat('en-NG', {
+        style: 'currency',
+        currency: 'NGN'
+      }).format((parseFloat(user.salary_per_month?.toString() || "0")) * 0.3),
+      "Purchasing Unit Remaining (₦)": new Intl.NumberFormat('en-NG', {
         style: 'currency',
         currency: 'NGN'
       }).format(parseFloat(user.loan_unit?.toString() || "0")),

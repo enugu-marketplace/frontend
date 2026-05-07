@@ -131,12 +131,55 @@ const ProductInstance = () => {
   const { data: products, isLoading: isLoadingProducts } = useQuery({
     queryKey: ["featured-products"],
     queryFn: async () => {
+      const primaryBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "";
+      const fallbackBaseUrl = "https://backend-api.enugufoodmarket.com/api/v1";
+      const allowProdFallback = process.env.NEXT_PUBLIC_ALLOW_PROD_FALLBACK === "true";
+
+      console.log(`[Products] Fetching from: ${primaryBaseUrl}/products?limit=50`);
+      console.log(`[Products] Fallback enabled: ${allowProdFallback} (NEXT_PUBLIC_ALLOW_PROD_FALLBACK=${process.env.NEXT_PUBLIC_ALLOW_PROD_FALLBACK})`);
+
       try {
-        const res = await axios.get(
-          `${process.env.NEXT_PUBLIC_API_BASE_URL}/products?limit=50`
-        );
+        let response;
+
+        try {
+          response = await axios.get(`${primaryBaseUrl}/products?limit=50`);
+          console.log(`[Products] Success: ${response.status}, items: ${response.data?.data?.length ?? 0}`);
+        } catch (primaryError: unknown) {
+          const httpStatus = axios.isAxiosError(primaryError) ? primaryError.response?.status : undefined;
+          const errMsg = axios.isAxiosError(primaryError) ? primaryError.message : String(primaryError);
+          const responseData = axios.isAxiosError(primaryError) ? primaryError.response?.data : undefined;
+          const requestUrl = axios.isAxiosError(primaryError) ? primaryError.config?.url : undefined;
+          const requestParams = axios.isAxiosError(primaryError) ? primaryError.config?.params : undefined;
+          const responseHeaders = axios.isAxiosError(primaryError) ? primaryError.response?.headers : undefined;
+          console.error(`[Products] Primary failed — status: ${httpStatus ?? 'network error'}, message: ${errMsg}`);
+          console.error('[Products] Failure details:', {
+            url: requestUrl,
+            params: requestParams,
+            responseData,
+            requestId: responseHeaders?.['x-request-id'],
+            rateLimitRemaining: responseHeaders?.['x-ratelimit-remaining'],
+          });
+
+          const shouldFallback =
+            allowProdFallback &&
+            httpStatus === 500 &&
+            primaryBaseUrl.includes("backend-staging.enugufoodmarket.com");
+
+          console.log(`[Products] Should fallback: ${shouldFallback}`);
+
+          if (!shouldFallback) {
+            console.error('[Products] No fallback — rethrowing. Set NEXT_PUBLIC_ALLOW_PROD_FALLBACK=true to enable fallback.');
+            throw primaryError;
+          }
+
+          console.warn(`[Products] Falling back to: ${fallbackBaseUrl}/products?limit=50`);
+          response = await axios.get(`${fallbackBaseUrl}/products?limit=50`);
+          console.log(`[Products] Fallback success: ${response.status}, items: ${response.data?.data?.length ?? 0}`);
+          toast.warning("Staging products endpoint is unavailable. Showing production product feed.");
+        }
+
         // Add mock ratings and categories for visual appeal
-        const productsWithMetadata = res.data.data.map((product: Product) => ({
+        const productsWithMetadata = response.data.data.map((product: Product) => ({
           ...product,
           rating: Math.floor(Math.random() * 2) + 4, // Random rating between 4-5
           reviewCount: Math.floor(Math.random() * 50) + 10, // Random reviews between 10-60
@@ -537,34 +580,34 @@ const ProductInstance = () => {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
-      whileHover={{ y: -5 }}
+      transition={{ duration: 0.35 }}
+      whileHover={{ y: -8 }}
       className="h-full"
     >
-      <Card className="h-full flex flex-col overflow-hidden border-0 shadow-md transition-all duration-300 hover:shadow-xl group rounded-xl">
+      <Card className="group h-full overflow-hidden rounded-[1.6rem] border border-slate-200 bg-white shadow-[0_4px_20px_rgba(15,23,42,0.07)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_12px_36px_rgba(15,23,42,0.13)]">
         <CardHeader className="p-0 relative">
-          <div className="relative h-56 w-full overflow-hidden bg-gradient-to-br from-gray-50 to-gray-100">
+          <div className="relative h-56 w-full overflow-hidden bg-slate-50">
             <Image
               src={product.product_image || "/placeholder-product.jpg"}
               alt={product.name}
               fill
-              className="object-contain w-full h-full p-4 group-hover:scale-110 transition-transform duration-500"
+              className="h-full w-full object-contain p-4 transition-transform duration-500 group-hover:scale-110"
               onError={handleImageError}
               style={{ objectFit: "contain" }}
             />
             
             {/* Badges */}
             <div className="absolute top-3 left-3 flex flex-col gap-2">
-              {/* {product.discount && product.discount > 0 && (
-                <Badge className="bg-red-500 hover:bg-red-600 text-white border-0">
+              {product.discount && product.discount > 0 && (
+                <Badge className="border-0 bg-rose-600 text-white shadow-md hover:bg-rose-700">
                   -{product.discount}%
                 </Badge>
-              )} */}
-              {/* {product.tags?.includes("bestseller") && (
-                <Badge className="bg-orange-500 hover:bg-orange-600 text-white border-0">
+              )}
+              {product.tags?.includes("bestseller") && (
+                <Badge className="border-0 bg-amber-500 text-white shadow-md hover:bg-amber-600">
                   Bestseller
                 </Badge>
-              )} */}
+              )}
               {/* {product.isPerishable && (
                 <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
                   <Clock className="h-3 w-3 mr-1" />
@@ -579,13 +622,13 @@ const ProductInstance = () => {
                 <TooltipTrigger asChild>
                   <button
                     onClick={() => toggleWishlist(product.id, product.name)}
-                    className="absolute top-3 right-3 p-2 bg-white rounded-full shadow-lg hover:bg-gray-50 transition-all z-10 group/wishlist"
+                    className="group/wishlist absolute right-3 top-3 z-10 rounded-full border border-white/70 bg-white/90 p-2 shadow-lg transition-all hover:bg-white"
                     disabled={isWishlistLoading || !isCartActionAllowed()}
                   >
                     {wishlistItems.includes(product.id) ? (
-                      <HeartOff size={18} className="text-red-500" />
+                      <HeartOff size={18} className="text-rose-500" />
                     ) : (
-                      <Heart size={18} className="text-gray-600 group-hover/wishlist:text-red-500" />
+                      <Heart size={18} className="text-slate-600 group-hover/wishlist:text-rose-500" />
                     )}
                   </button>
                 </TooltipTrigger>
@@ -604,8 +647,8 @@ const ProductInstance = () => {
             {(isAdmin || isAgent) && (
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <div className="absolute top-3 right-3 p-2 bg-white rounded-full shadow-lg">
-                    <Info size={18} className="text-gray-400" />
+                  <div className="absolute right-3 top-3 rounded-full border border-white/70 bg-white/90 p-2 shadow-lg">
+                    <Info size={18} className="text-slate-400" />
                   </div>
                 </TooltipTrigger>
                 <TooltipContent side="top">
@@ -615,9 +658,9 @@ const ProductInstance = () => {
             )}
           </div>
         </CardHeader>
-        <CardContent className="pt-4 flex flex-col flex-grow p-4">
+        <CardContent className="flex flex-grow flex-col p-5 pt-4">
           <div className="flex items-start justify-between mb-2">
-            <h3 className="font-bold text-base line-clamp-1 group-hover:text-orange-600 transition-colors flex-1">
+            <h3 className="flex-1 line-clamp-1 text-base font-bold text-slate-900 transition-colors group-hover:text-emerald-700">
               {product.name}
             </h3>
             {/* {product.category && (
@@ -627,30 +670,27 @@ const ProductInstance = () => {
             )} */}
           </div>
           
-          <p className="text-gray-600 text-xs mb-3 line-clamp-2">{product.description}</p>
+          <p className="mb-3 line-clamp-2 text-xs leading-5 text-slate-600">{product.description}</p>
 
           {/* Star rating */}
-          <div className="flex items-center mb-3">
-            <div className="flex mr-1">
+          <div className="mb-3 flex items-center rounded-full bg-amber-50 px-2.5 py-1.5 w-fit border border-amber-100">
+            <div className="flex">
               {renderStars(product.rating || 5)}
             </div>
-            <span className="text-xs text-gray-600 ml-1">
-              ({product.reviewCount || 2})
-            </span>
           </div>
 
           <div className="mt-auto">
             <div className="mb-3">
               {product.discount ? (
                 <div className="flex items-center gap-2">
-                  <span className="font-bold text-lg text-gray-900">
+                  <span className="text-lg font-bold text-slate-950">
                     {new Intl.NumberFormat("en-NG", {
                       style: "currency",
                       currency: product.currency,
                       currencyDisplay: "narrowSymbol",
                     }).format(product.basePrice * (1 - product.discount / 100))}
                   </span>
-                  <span className="text-sm text-gray-400 line-through">
+                  <span className="text-sm text-slate-400 line-through">
                     {new Intl.NumberFormat("en-NG", {
                       style: "currency",
                       currency: product.currency,
@@ -658,7 +698,7 @@ const ProductInstance = () => {
                   </span>
                 </div>
               ) : (
-                <span className="font-bold text-lg text-gray-900">
+                <span className="text-lg font-bold text-slate-950">
                   {new Intl.NumberFormat("en-NG", {
                     style: "currency",
                     currency: product.currency,
@@ -669,7 +709,7 @@ const ProductInstance = () => {
             </div>
           </div>
         </CardContent>
-        <CardFooter className="p-4 pt-0">
+        <CardFooter className="p-5 pt-0">
           <div className="flex gap-2 w-full">
             {/* Add to Cart button - only for regular users */}
             {isRegularUser && (
@@ -677,7 +717,7 @@ const ProductInstance = () => {
                 <TooltipTrigger asChild>
                   <div className="flex-1">
                     <Button
-                      className="w-full bg-orange-600 hover:bg-orange-700 h-10 text-xs font-bold transition-all hover:scale-105"
+                      className="h-10 w-full rounded-full bg-emerald-700 text-xs font-bold tracking-wide text-white transition-all hover:scale-105 hover:bg-emerald-800"
                       onClick={() => addToCart(product)}
                       disabled={!isCartActionAllowed() || isAddingToCart}
                     >
@@ -712,7 +752,7 @@ const ProductInstance = () => {
                 <TooltipTrigger asChild>
                   <div className="flex-1">
                     <Button
-                      className="w-full bg-gray-400 cursor-not-allowed h-10 text-xs font-bold"
+                      className="h-10 w-full cursor-not-allowed rounded-full bg-slate-300 text-xs font-bold text-slate-600"
                       disabled
                     >
                       <ShoppingCart className="h-3 w-3 mr-1" />
@@ -731,7 +771,7 @@ const ProductInstance = () => {
               <Button
                 asChild
                 variant="outline"
-                className="flex-1 border-orange-500 text-orange-500 hover:bg-orange-50 h-10 text-xs transition-all hover:scale-105"
+                className="h-10 flex-1 rounded-full border-emerald-700/35 bg-white text-xs font-semibold text-emerald-700 transition-all hover:scale-105 hover:border-emerald-700 hover:bg-emerald-50"
               >
                 <Link href={`/employee-dashboard/products/${product.id}`}>
                   <Eye className="h-3 w-3 mr-1" />
@@ -743,7 +783,7 @@ const ProductInstance = () => {
                 <TooltipTrigger asChild>
                   <Button
                     variant="outline"
-                    className="flex-1 border-gray-300 text-gray-400 h-10 text-xs cursor-not-allowed"
+                    className="h-10 flex-1 cursor-not-allowed rounded-full border-slate-300 text-xs text-slate-400"
                     disabled
                   >
                     <Eye className="h-3 w-3 mr-1" />
@@ -805,7 +845,7 @@ const ProductInstance = () => {
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-green-50 via-white to-white">
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(22,101,52,0.12),_transparent_22%),radial-gradient(circle_at_top_right,_rgba(245,158,11,0.12),_transparent_20%),linear-gradient(180deg,_rgba(248,244,234,0.72)_0%,_rgba(255,255,255,0.96)_18%,_#ffffff_100%)]">
       <TooltipProvider>
        
 
@@ -909,7 +949,7 @@ const ProductInstance = () => {
         )}
 
         {/* Carousels - Visible to all roles */}
-        <div className="container px-4 mx-auto">
+        <div className="container py-6 px-4 mx-auto">
           {!isLoadingProducts && featuredProducts.length > 0 && (
             <ProductCarousel 
               title="Featured Products"  
@@ -936,7 +976,7 @@ const ProductInstance = () => {
         </div>
 
         {/* Main Products Section */}
-        <section className="py-12 bg-gray-50">
+        <section className="py-12 bg-transparent">
           <div className="container px-4 mx-auto">
             <div className="text-center mb-10">
               <div className="inline-flex items-center rounded-full bg-orange-100 px-4 py-2 text-sm font-medium text-orange-700 mb-4">

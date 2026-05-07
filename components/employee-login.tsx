@@ -74,7 +74,7 @@ export default function EmployeeLogin() {
               name="identifier"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Email, Verification ID, Employee ID or Phone Number</FormLabel>
+                  <FormLabel>Verification ID</FormLabel>
                   <FormControl>
                     <Input placeholder="Enter your identifier" {...field} />
                   </FormControl>

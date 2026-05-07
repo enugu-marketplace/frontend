@@ -2,14 +2,8 @@
 
 import { useEffect } from 'react';
 import { toast } from 'sonner';
-import BenefitsSection from '@/components/BenefitsSection'
-import FAQ from '@/components/FAQ'
-import Features from '@/components/Feature'
 import Footer from '@/components/Footer'
-import Hero from '@/components/Hero'
-import LeadershipProfile from '@/components/Overview'
 import ProductInstance from '@/components/product-instance'
-import Stats from '@/components/Stats'
 
 const Page = () => {
   useEffect(() => {
@@ -34,21 +28,12 @@ const Page = () => {
   }, []);
 
   return (
-    <div className=''>
-      {/* <Header/> */}
-      {/* <Hero/>
+    <div className="bg-[#f8f4ea] text-slate-900">
+      <main className="relative overflow-hidden bg-[radial-gradient(circle_at_top_left,_rgba(24,119,70,0.16),_transparent_28%),radial-gradient(circle_at_top_right,_rgba(244,177,131,0.2),_transparent_24%),linear-gradient(180deg,_#f8f4ea_0%,_#f4efe3_22%,_#ffffff_100%)]">
+        <ProductInstance />
+      </main>
 
-      <Stats/>
-      
-      <Features/>
-       <LeadershipProfile/>
-
-
-      <BenefitsSection/> */}
-      
-      <ProductInstance/>
-      {/* <FAQ/> */}
-      <Footer/>
+      <Footer />
     </div>
   )
 }

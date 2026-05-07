@@ -19,6 +19,89 @@ export function ExportLoansDialog({ token }: ExportLoansDialogProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
 
+  const parseCsvLine = (line: string) => {
+    const cells: string[] = [];
+    let current = "";
+    let inQuotes = false;
+
+    for (let i = 0; i < line.length; i += 1) {
+      const char = line[i];
+      const nextChar = line[i + 1];
+
+      if (char === '"' && inQuotes && nextChar === '"') {
+        current += '"';
+        i += 1;
+        continue;
+      }
+
+      if (char === '"') {
+        inQuotes = !inQuotes;
+        continue;
+      }
+
+      if (char === ',' && !inQuotes) {
+        cells.push(current.trim());
+        current = "";
+        continue;
+      }
+
+      current += char;
+    }
+
+    cells.push(current.trim());
+    return cells;
+  };
+
+  const escapeCsv = (value: string) => `"${value.replace(/"/g, '""')}"`;
+
+  const ensurePsnColumn = (csvText: string) => {
+    const lines = csvText
+      .split(/\r?\n/)
+      .filter((line) => line.trim().length > 0);
+
+    if (lines.length === 0) {
+      return csvText;
+    }
+
+    const header = parseCsvLine(lines[0]);
+    const normalized = header.map((h) => h.trim().toLowerCase().replace(/\s+/g, "_"));
+
+    const psnIndex = normalized.findIndex((h) => h === "psn");
+    const verificationIndex = normalized.findIndex((h) => h === "verification_id" || h === "verificationid");
+    const employeeIndex = normalized.findIndex((h) => h === "employee_id" || h === "employeeid");
+    const sourceIndex = verificationIndex !== -1 ? verificationIndex : employeeIndex;
+
+    if (psnIndex !== -1) {
+      // PSN column exists — fill any empty values from source.
+      const rebuilt = [
+        header.map((cell) => escapeCsv(cell)).join(","),
+        ...lines.slice(1).map((line) => {
+          const row = parseCsvLine(line);
+          const existing = String(row[psnIndex] ?? "").trim();
+          const fallback = sourceIndex !== -1 ? String(row[sourceIndex] ?? "").trim() : "";
+          row[psnIndex] = existing || fallback;
+          return row.map((cell) => escapeCsv(cell)).join(",");
+        }),
+      ];
+      return rebuilt.join("\n");
+    }
+
+    if (sourceIndex === -1) {
+      return csvText;
+    }
+
+    const rebuilt = [
+      [...header, "PSN"].map((cell) => escapeCsv(cell)).join(","),
+      ...lines.slice(1).map((line) => {
+        const row = parseCsvLine(line);
+        const psnValue = String(row[sourceIndex] ?? "").trim();
+        return [...row, psnValue].map((cell) => escapeCsv(cell)).join(",");
+      }),
+    ];
+
+    return rebuilt.join("\n");
+  };
+
   const exportLoans = async () => {
     setIsExporting(true);
     try {
@@ -37,8 +120,10 @@ export function ExportLoansDialog({ token }: ExportLoansDialogProps) {
         throw new Error("Failed to export loans");
       }
 
-      // Get the blob data
-      const blob = await response.blob();
+      // Normalize export so PSN is always present when source columns exist.
+      const rawText = await response.text();
+      const normalizedCsv = ensurePsnColumn(rawText);
+      const blob = new Blob([normalizedCsv], { type: "text/csv;charset=utf-8;" });
       
       // Create a download link
       const url = window.URL.createObjectURL(blob);

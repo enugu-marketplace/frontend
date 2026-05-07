@@ -7,12 +7,12 @@ declare module "next-auth" {
     userId: string;
     name: string;
     email: string;
-    role: string; // This can now be "super_admin", "fulfillment_officer", "cashier", or "user"
+    role: string; 
     token: string;
     status?: string;
     is_temp_password?: boolean;
     
-    // Employee-specific fields (optional)
+    // Employee-specific fields
     phone?: string;
     level?: string;
     employee_id?: string;
@@ -24,7 +24,7 @@ declare module "next-auth" {
     is_address_set?: boolean;
     is_compliance_submitted?: boolean; 
     
-    // Admin/Cashier-specific fields (optional)
+    // Admin/Cashier-specific fields
     username?: string;
     firstname?: string;
     lastname?: string;

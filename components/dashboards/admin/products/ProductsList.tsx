@@ -67,14 +67,57 @@ export function ProductsList({ token }: { token: string }) {
   } = useInfiniteQuery({
     queryKey: ['admin-products'],
     queryFn: async ({ pageParam = 1 }) => {
-      const res = await axios.get<ApiResponse>(
-        `${process.env.NEXT_PUBLIC_API_BASE_URL}/admin/products`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-          params: { page: pageParam, limit: 20 } // Increased limit for better filtering
+      const primaryUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+      const fallbackUrl = 'https://backend-api.enugufoodmarket.com/api/v1';
+      const canFallback =
+        process.env.NEXT_PUBLIC_ALLOW_PROD_FALLBACK === 'true' &&
+        primaryUrl?.includes('backend-staging.enugufoodmarket.com');
+
+      console.log(`[AdminProducts] Fetching page ${pageParam} from: ${primaryUrl}/admin/products`);
+      console.log(`[AdminProducts] Fallback enabled: ${canFallback} (NEXT_PUBLIC_ALLOW_PROD_FALLBACK=${process.env.NEXT_PUBLIC_ALLOW_PROD_FALLBACK})`);
+
+      try {
+        const res = await axios.get<ApiResponse>(
+          `${primaryUrl}/admin/products`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+            params: { page: pageParam, limit: 20 },
+          }
+        );
+        console.log(`[AdminProducts] Success: ${res.status}, items: ${res.data?.data?.length ?? 0}`);
+        return res.data;
+      } catch (err: unknown) {
+        const httpStatus = axios.isAxiosError(err) ? err.response?.status : undefined;
+        const errMsg = axios.isAxiosError(err) ? err.message : String(err);
+        const responseData = axios.isAxiosError(err) ? err.response?.data : undefined;
+        const requestUrl = axios.isAxiosError(err) ? err.config?.url : undefined;
+        const requestParams = axios.isAxiosError(err) ? err.config?.params : undefined;
+        const responseHeaders = axios.isAxiosError(err) ? err.response?.headers : undefined;
+        console.error(`[AdminProducts] Request failed — status: ${httpStatus ?? 'network error'}, message: ${errMsg}`);
+        console.error('[AdminProducts] Failure details:', {
+          url: requestUrl,
+          params: requestParams,
+          responseData,
+          requestId: responseHeaders?.['x-request-id'],
+          rateLimitRemaining: responseHeaders?.['x-ratelimit-remaining'],
+        });
+
+        if (canFallback && (!httpStatus || httpStatus >= 500)) {
+          console.warn(`[AdminProducts] Falling back to production: ${fallbackUrl}/admin/products`);
+          const res = await axios.get<ApiResponse>(
+            `${fallbackUrl}/admin/products`,
+            {
+              headers: { Authorization: `Bearer ${token}` },
+              params: { page: pageParam, limit: 20 },
+            }
+          );
+          console.log(`[AdminProducts] Fallback success: ${res.status}, items: ${res.data?.data?.length ?? 0}`);
+          return res.data;
         }
-      );
-      return res.data;
+
+        console.error('[AdminProducts] No fallback — rethrowing. Set NEXT_PUBLIC_ALLOW_PROD_FALLBACK=true to enable fallback.');
+        throw err;
+      }
     },
     initialPageParam: 1,
     getNextPageParam: (lastPage, allPages) => {
