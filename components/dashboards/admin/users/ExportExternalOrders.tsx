@@ -30,6 +30,53 @@ type AdminOrder = {
   };
 };
 
+const CYCLE_START_YEAR = 2026;
+const CYCLE_START_MONTH = 4; // April (1-12)
+const CYCLE_START_DAY = 21;
+
+const getOrderCycleMonthKey = (placedAt: string): string | null => {
+  if (typeof placedAt !== "string" || !placedAt.trim()) {
+    return null;
+  }
+
+  const fullDateMatch = placedAt.match(/^(\d{4})-(\d{2})-(\d{2})/);
+
+  let year: number;
+  let monthIndex: number;
+  let day: number;
+
+  if (fullDateMatch) {
+    year = Number(fullDateMatch[1]);
+    monthIndex = Number(fullDateMatch[2]) - 1;
+    day = Number(fullDateMatch[3]);
+  } else {
+    const parsed = new Date(placedAt);
+    if (Number.isNaN(parsed.getTime())) {
+      return null;
+    }
+
+    year = parsed.getUTCFullYear();
+    monthIndex = parsed.getUTCMonth();
+    day = parsed.getUTCDate();
+  }
+
+  const shouldApplyCycle =
+    year > CYCLE_START_YEAR ||
+    (year === CYCLE_START_YEAR && monthIndex + 1 > CYCLE_START_MONTH) ||
+    (year === CYCLE_START_YEAR && monthIndex + 1 === CYCLE_START_MONTH && day >= CYCLE_START_DAY);
+
+  // Apply payroll cycle only from April->May boundary onward.
+  if (shouldApplyCycle && day >= 21) {
+    monthIndex += 1;
+    if (monthIndex > 11) {
+      monthIndex = 0;
+      year += 1;
+    }
+  }
+
+  return `${year}-${String(monthIndex + 1).padStart(2, "0")}`;
+};
+
 export function ExportExternalOrdersDialog({ token }: ExportLoansDialogProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
@@ -103,11 +150,11 @@ export function ExportExternalOrdersDialog({ token }: ExportLoansDialogProps) {
       ]);
 
       if (!csvResponse.ok) {
-        throw new Error("Failed to fetch export file");
+        throw new Error(`Export-loans API returned ${csvResponse.status} ${csvResponse.statusText}`);
       }
 
       if (!ordersResponse.ok) {
-        throw new Error("Failed to fetch orders for month filter");
+        throw new Error(`All-orders API returned ${ordersResponse.status} ${ordersResponse.statusText}`);
       }
 
       const csvText = await csvResponse.text();
@@ -134,10 +181,16 @@ export function ExportExternalOrdersDialog({ token }: ExportLoansDialogProps) {
         }
       }
 
-      const monthlyOrders = allOrders.filter((order) => {
-        const placedAt = order?.placedAt ?? "";
-        return placedAt.slice(0, 7) === selectedMonth;
-      });
+      const monthlyOrders = Array.from(
+        new Map(
+          allOrders
+            .filter((order) => {
+              const cycleMonthKey = getOrderCycleMonthKey(order?.placedAt ?? "");
+              return cycleMonthKey === selectedMonth;
+            })
+            .map((order) => [String(order.id ?? ""), order])
+        ).values()
+      ).filter((order) => String(order.id ?? "").trim().length > 0);
 
       if (monthlyOrders.length === 0) {
         toast.info(`No orders found for ${selectedMonth}.`);
@@ -156,17 +209,17 @@ export function ExportExternalOrdersDialog({ token }: ExportLoansDialogProps) {
       const headerCells = parseCsvLine(lines[0]);
       const psnIndex = headerCells.findIndex((header) => header.toLowerCase() === "psn");
       const amountIndex = headerCells.findIndex((header) => header.toLowerCase() === "amount");
+      const startDateIndex = headerCells.findIndex((header) => header.toLowerCase().replace(/[\s_]/g, "") === "startdate");
+      const endDateIndex = headerCells.findIndex((header) => header.toLowerCase().replace(/[\s_]/g, "") === "enddate");
 
       if (psnIndex === -1 || amountIndex === -1) {
-        throw new Error("Required columns not found in export");
+        throw new Error(`Required columns not found. Headers found: ${headerCells.join(" | ")}`);
       }
 
-      // Use the first data row as a template for fixed fields
-      // (DeductionName, ValueType, DurationType, StartDate, EndDate).
       const templateRow = parseCsvLine(lines[1]);
 
-      // Build one output row per monthly order, filling PSN from the users lookup
-      // and amount from the order. All other columns come from the template row.
+      // Build one output row per monthly order, filling PSN and Amount.
+      // StartDate and EndDate are left blank.
       const outputRows: string[][] = monthlyOrders.map((order) => {
         const userId = String(order.userId ?? order.user?.id ?? "").trim();
         const psn =
@@ -177,6 +230,8 @@ export function ExportExternalOrdersDialog({ token }: ExportLoansDialogProps) {
         const row = [...templateRow];
         row[psnIndex] = psn;
         row[amountIndex] = amount;
+        if (startDateIndex !== -1) row[startDateIndex] = "";
+        if (endDateIndex !== -1) row[endDateIndex] = "";
         return row;
       });
 
@@ -212,7 +267,8 @@ export function ExportExternalOrdersDialog({ token }: ExportLoansDialogProps) {
 
     } catch (error) {
       console.error("Export error:", error);
-      toast.error("Failed to export orders for the selected month. Please try again.");
+      const message = error instanceof Error ? error.message : String(error);
+      toast.error(`Export failed: ${message}`);
     } finally {
       setIsExporting(false);
     }
