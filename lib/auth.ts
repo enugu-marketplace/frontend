@@ -69,10 +69,25 @@ async function handleAuthFetch(url: string, options: RequestInit) {
     clearTimeout(timeoutId);
     
     if (!response.ok) {
+      const rawBody = await response
+        .clone()
+        .text()
+        .catch(() => 'Unable to read response body');
+      let parsedBody: unknown = rawBody;
+
+      try {
+        parsedBody = JSON.parse(rawBody);
+      } catch {
+        // Keep raw text when payload is not JSON.
+      }
+
       console.error('❌ API response not OK:', {
         status: response.status,
         statusText: response.statusText,
-        url: url
+        url: url,
+        responseBody: parsedBody,
+        rateLimitRemaining: response.headers.get('x-ratelimit-remaining'),
+        requestId: response.headers.get('x-request-id'),
       });
     }
     
@@ -81,6 +96,7 @@ async function handleAuthFetch(url: string, options: RequestInit) {
     console.error('🔴 Fetch error details:', {
       errorName: error.name,
       errorMessage: error.message,
+      errorStack: error.stack,
       url: url
     });
     
@@ -91,6 +107,56 @@ async function handleAuthFetch(url: string, options: RequestInit) {
       throw new AuthError('Network connection failed', 'NETWORK_ERROR');
     }
     throw new AuthError(error.message, 'FETCH_ERROR');
+  }
+}
+
+async function fetchAuthWithFallback(path: string, options: RequestInit) {
+  const primaryBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+  const fallbackBaseUrl = 'https://backend-api.enugufoodmarket.com/api/v1';
+  const allowProdFallback = process.env.NEXT_PUBLIC_ALLOW_PROD_FALLBACK === 'true';
+
+  if (!primaryBaseUrl) {
+    throw new AuthError('Server configuration error', 'CONFIG_ERROR');
+  }
+
+  const primaryUrl = `${primaryBaseUrl}${path}`;
+  const canFallback =
+    allowProdFallback &&
+    primaryBaseUrl.includes('backend-staging.enugufoodmarket.com');
+
+  console.log(`[Auth] Attempting: ${primaryUrl}`);
+  console.log(`[Auth] Fallback enabled: ${canFallback} (NEXT_PUBLIC_ALLOW_PROD_FALLBACK=${process.env.NEXT_PUBLIC_ALLOW_PROD_FALLBACK})`);
+
+  try {
+    const primaryResponse = await handleAuthFetch(primaryUrl, options);
+    console.log(`[Auth] Response from ${primaryUrl}: ${primaryResponse.status}`);
+
+    if (canFallback && primaryResponse.status >= 500) {
+      const rawPrimaryBody = await primaryResponse
+        .clone()
+        .text()
+        .catch(() => 'Unable to read response body');
+      console.error(`[Auth] Primary non-success body: ${rawPrimaryBody}`);
+      console.warn(`[Auth] Staging returned ${primaryResponse.status}. Falling back to production.`);
+      const fallbackResponse = await handleAuthFetch(`${fallbackBaseUrl}${path}`, options);
+      console.log(`[Auth] Fallback response: ${fallbackResponse.status}`);
+      return fallbackResponse;
+    }
+
+    return primaryResponse;
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? error.message : String(error);
+    console.error(`[Auth] Request to ${primaryUrl} threw: ${errMsg}`);
+
+    if (!canFallback) {
+      console.error('[Auth] No fallback configured — rethrowing error.');
+      throw error;
+    }
+
+    console.warn(`[Auth] Falling back to production: ${fallbackBaseUrl}${path}`);
+    const fallbackResponse = await handleAuthFetch(`${fallbackBaseUrl}${path}`, options);
+    console.log(`[Auth] Fallback response: ${fallbackResponse.status}`);
+    return fallbackResponse;
   }
 }
 
@@ -168,7 +234,7 @@ export const authOptions: NextAuthOptions = {
             throw new AuthError('Server configuration error', 'CONFIG_ERROR');
           }
 
-          const response = await handleAuthFetch(apiUrl, {
+            const response = await fetchAuthWithFallback('/auth/admin-login', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -295,7 +361,7 @@ export const authOptions: NextAuthOptions = {
           const apiUrl = `${process.env.NEXT_PUBLIC_API_BASE_URL}/auth/fulfillment-officer-login`;
           console.log('📡 Calling API:', apiUrl);
 
-          const response = await handleAuthFetch(apiUrl, {
+          const response = await fetchAuthWithFallback('/auth/fulfillment-officer-login', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -417,7 +483,7 @@ export const authOptions: NextAuthOptions = {
           const apiUrl = `${process.env.NEXT_PUBLIC_API_BASE_URL}/auth/cashier-login`;
           console.log('📡 Calling API:', apiUrl);
 
-          const response = await handleAuthFetch(apiUrl, {
+          const response = await fetchAuthWithFallback('/auth/cashier-login', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -540,7 +606,7 @@ export const authOptions: NextAuthOptions = {
           const apiUrl = `${process.env.NEXT_PUBLIC_API_BASE_URL}/auth/verify-otp`;
           console.log('📡 Calling API:', apiUrl);
 
-          const response = await handleAuthFetch(apiUrl, {
+          const response = await fetchAuthWithFallback('/auth/verify-otp', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -670,7 +736,7 @@ export const authOptions: NextAuthOptions = {
 
     async jwt({ token, user, trigger, session }) {
       try {
-        console.log('🔄 JWT callback - trigger:', trigger);
+        // console.log('🔄 JWT callback - trigger:', trigger);
 
         if (user) {
           console.log('✅ Adding user data to JWT token');

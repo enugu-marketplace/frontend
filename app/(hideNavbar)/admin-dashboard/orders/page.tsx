@@ -7,6 +7,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { ExportExternalOrdersDialog } from '@/components/dashboards/admin/users/ExportExternalOrders';
+import { ResetPurchasingUnitDialog } from '@/components/dashboards/admin/orders/ResetPurchasingUnitDialog';
 
 export default async function OrdersPage() {
   const session = await getServerSession(authOptions);
@@ -33,8 +34,10 @@ export default async function OrdersPage() {
     <div className="p-4 space-y-6 mt-[60px]">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Orders Management</h1>
-        <ExportExternalOrdersDialog token={session.user.token} />
-       
+        <div className="flex gap-2">
+          <ExportExternalOrdersDialog token={session.user.token} />
+          <ResetPurchasingUnitDialog token={session.user.token} />
+        </div>
       </div>
 
       <Card>

@@ -170,6 +170,11 @@ export function UserDetails({ userData, token }: UserDetailsProps) {
               <p className="text-sm font-medium text-gray-500">Employee ID</p>
               <p className="font-mono">{displayUser.employee_id || "N/A"}</p>
             </div>
+
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-gray-500">PSN</p>
+              <p className="font-mono">{displayUser.verification_id || "N/A"}</p>
+            </div>
             
             <div className="space-y-2">
               <p className="text-sm font-medium text-gray-500">Email</p>

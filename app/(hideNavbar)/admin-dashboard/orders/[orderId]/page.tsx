@@ -33,11 +33,14 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ or
   try {
     const response = await axios.get(
       `${process.env.NEXT_PUBLIC_API_BASE_URL}/admin/single-order?order_id=${orderId}`,
+     
       {
         headers: { Authorization: `Bearer ${session.user.token}` }
       }
     );
+    
     order = response.data.data;
+    console.log(order);
   } catch (error) {
     console.error('Failed to fetch order:', error);
     redirect('/admin-dashboard/orders');
@@ -79,7 +82,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ or
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Customer</p>
-                  <p className="text-gray-900 dark:text-white font-bold text-[16px]">{order.user.firstname} {order.user.lastname}</p>
+                  {/* <p className="text-gray-900 dark:text-white font-bold text-[16px]">{order.user.firstname} {order.user.lastname}</p> */}
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Payment Status</p>

@@ -8,7 +8,7 @@ import { ComplianceCard } from "@/components/ComplianceCard";
 import { useInView } from "react-intersection-observer";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Loader2, AlertCircle, Download, Search, Filter, ChevronDown } from "lucide-react";
+import { Loader2, AlertCircle, Download, Search, Filter, ChevronDown, User, Building2, Mail, Phone, CreditCard, Calendar, ShieldCheck } from "lucide-react";
 import { Consent } from "@/types/compliance";
 import {
   Dialog,
@@ -17,6 +17,8 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Badge } from "@/components/ui/badge";
 import { useSession } from "next-auth/react";
 import { redirect } from "next/navigation";
 import { useToast } from "@/components/ui/use-toast";
@@ -36,7 +38,7 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Badge } from "@/components/ui/badge";
+
 
 // Status options for filtering
 const STATUS_OPTIONS = [
@@ -481,105 +483,112 @@ export default function AdminCompliancePage() {
 
       {/* Detail Dialog */}
       <Dialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Compliance Form Details</DialogTitle>
-            <DialogDescription>
-              Employee: {selectedCompliance?.user.firstname}{" "}
-              {selectedCompliance?.user.lastname}
-            </DialogDescription>
-          </DialogHeader>
-
-          {selectedCompliance && (
-            <div className="space-y-6">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="font-semibold">Name</p>
-                  <p>
-                    {selectedCompliance.user.firstname}{" "}
-                    {selectedCompliance.user.lastname}
-                  </p>
-                </div>
-                <div>
-                  <p className="font-semibold">Employee ID</p>
-                  <p>{selectedCompliance.user.employee_id}</p>
-                </div>
-                <div>
-                  <p className="font-semibold">Email</p>
-                  <p>{selectedCompliance.user.email}</p>
-                </div>
-                <div>
-                  <p className="font-semibold">Phone</p>
-                  <p>{selectedCompliance.user.phone}</p>
-                </div>
-                <div>
-                  <p className="font-semibold">Government Entity</p>
-                  <p>{selectedCompliance.user.government_entity}</p>
-                </div>
-                <div>
-                  <p className="font-semibold">Salary</p>
-                  <p>
-                    ₦{selectedCompliance.user.salary_per_month.toLocaleString()}
-                  </p>
-                </div>
-                <div>
-                  <p className="font-semibold">Status</p>
-                  <p className="capitalize">
-                    {selectedCompliance.status.toLowerCase()}
-                  </p>
-                </div>
-                <div>
-                  <p className="font-semibold">Submitted On</p>
-                  <p>
-                    {new Date(
-                      selectedCompliance.createdAt
-                    ).toLocaleDateString()}
-                  </p>
-                </div>
+        <DialogContent className="max-w-2xl p-0 overflow-hidden rounded-2xl">
+          {/* Banner */}
+          <div className="bg-gradient-to-r from-green-700 to-green-600 px-6 pt-5 pb-6">
+            <div className="flex items-center gap-3 mb-1">
+              <div className="bg-white/20 rounded-full p-2">
+                <ShieldCheck className="h-4 w-4 text-white" />
               </div>
-
-              <div className="relative h-64 w-full rounded-md overflow-hidden bg-gray-100">
-                <img
-                  src={selectedCompliance.form_url}
-                  alt="Compliance form"
-                  className="w-full h-full object-contain"
-                />
-              </div>
-
-              <div className="flex justify-between">
-                <Button
-                  variant="outline"
-                  onClick={() => handleDownloadImage(selectedCompliance)}
-                  className="flex items-center gap-2"
-                >
-                  <Download className="h-4 w-4" />
-                  Download Image
-                </Button>
-
-                {selectedCompliance.status === "PENDING" && (
-                  <div className="flex gap-2">
-                    <Button
-                      variant="default"
-                      onClick={() => handleApprove(selectedCompliance.id)}
-                      disabled={updatingComplianceId === selectedCompliance.id}
-                      className="bg-green-600 hover:bg-green-700"
-                    >
-                      <CheckCircle className="h-4 w-4 mr-2" />
-                      Approve
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      onClick={() => handleReject(selectedCompliance.id)}
-                      disabled={updatingComplianceId === selectedCompliance.id}
-                    >
-                      <XCircle className="h-4 w-4 mr-2" />
-                      Reject
-                    </Button>
-                  </div>
-                )}
-              </div>
+              <DialogTitle className="text-white text-base font-semibold m-0">
+                Compliance Form Details
+              </DialogTitle>
             </div>
-          )}
+            <DialogDescription className="text-green-100 text-sm">
+              {selectedCompliance?.user.firstname} {selectedCompliance?.user.lastname} — {selectedCompliance?.user.employee_id}
+            </DialogDescription>
+          </div>
+
+          <ScrollArea className="max-h-[75vh]">
+            {selectedCompliance && (
+              <div className="px-6 py-5 space-y-5">
+                {/* Status badge */}
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-500">Status:</span>
+                  <span className={`inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full border ${
+                    selectedCompliance.status === "APPROVED"
+                      ? "bg-green-100 text-green-700 border-green-200"
+                      : selectedCompliance.status === "PENDING"
+                      ? "bg-amber-100 text-amber-700 border-amber-200"
+                      : "bg-red-100 text-red-700 border-red-200"
+                  }`}>
+                    {selectedCompliance.status}
+                  </span>
+                </div>
+
+                {/* Info grid */}
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    { icon: User,       label: "Full Name",         value: `${selectedCompliance.user.firstname} ${selectedCompliance.user.lastname}` },
+                    { icon: CreditCard, label: "Employee ID",        value: selectedCompliance.user.employee_id },
+                    { icon: Mail,       label: "Email",              value: selectedCompliance.user.email },
+                    { icon: Phone,      label: "Phone",              value: selectedCompliance.user.phone },
+                    { icon: Building2,  label: "Government Entity",  value: selectedCompliance.user.government_entity },
+                    { icon: CreditCard, label: "Monthly Salary",     value: `₦${selectedCompliance.user.salary_per_month?.toLocaleString()}` },
+                    { icon: Calendar,   label: "Submitted On",       value: new Date(selectedCompliance.createdAt).toLocaleDateString("en-NG", { day: "numeric", month: "long", year: "numeric" }) },
+                  ].map(({ icon: Icon, label, value }) => (
+                    <div key={label} className="bg-gray-50 rounded-xl px-4 py-3 flex items-start gap-3">
+                      <Icon className="h-4 w-4 text-gray-400 mt-0.5 shrink-0" />
+                      <div className="min-w-0">
+                        <p className="text-xs text-gray-400 mb-0.5">{label}</p>
+                        <p className="text-sm font-medium text-gray-800 truncate">{value || "—"}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Document image */}
+                <div>
+                  <p className="text-xs font-medium text-gray-500 mb-2">Uploaded Document</p>
+                  <div className="rounded-xl overflow-hidden border border-gray-100 bg-gray-50 shadow-sm">
+                    <img
+                      src={selectedCompliance.form_url}
+                      alt="Compliance form"
+                      className="w-full max-h-72 object-contain"
+                    />
+                  </div>
+                </div>
+
+                {/* Action buttons */}
+                <div className="flex flex-col sm:flex-row justify-between gap-3 pt-1">
+                  <Button
+                    variant="outline"
+                    onClick={() => handleDownloadImage(selectedCompliance)}
+                    className="rounded-xl gap-2 border-gray-200"
+                  >
+                    <Download className="h-4 w-4" />
+                    Download Document
+                  </Button>
+
+                  {selectedCompliance.status === "PENDING" && (
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={() => handleApprove(selectedCompliance.id)}
+                        disabled={updatingComplianceId === selectedCompliance.id}
+                        className="rounded-xl bg-green-600 hover:bg-green-700 gap-2"
+                      >
+                        {updatingComplianceId === selectedCompliance.id
+                          ? <Loader2 className="h-4 w-4 animate-spin" />
+                          : <><CheckCircle className="h-4 w-4" />Approve</>
+                        }
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        onClick={() => handleReject(selectedCompliance.id)}
+                        disabled={updatingComplianceId === selectedCompliance.id}
+                        className="rounded-xl gap-2"
+                      >
+                        {updatingComplianceId === selectedCompliance.id
+                          ? <Loader2 className="h-4 w-4 animate-spin" />
+                          : <><XCircle className="h-4 w-4" />Reject</>
+                        }
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </ScrollArea>
         </DialogContent>
       </Dialog>
     </div>
