@@ -15,6 +15,8 @@ const formatCurrency = (value: number | undefined) => {
   }).format(numValue);
 };
 
+const APRIL_2026_MANUAL_REVENUE = 210700;
+
 export default async function AdminDashboard() {
   const session = await getServerSession(authOptions);
   
@@ -49,7 +51,8 @@ export default async function AdminDashboard() {
   const totalUsers = users.length;
   const totalProducts = products.length;
   const totalOrders = orders.length;
-  const totalRevenue = orders.reduce((sum: number, order: any) => sum + order.totalAmount, 0);
+  const systemRevenue = orders.reduce((sum: number, order: any) => sum + order.totalAmount, 0);
+  const totalRevenue = systemRevenue + APRIL_2026_MANUAL_REVENUE;
   const pendingOrders = orders.filter((order: any) => order.orderStatus === 'PENDING').length;
   const deliveredOrders = orders.filter((order: any) => order.orderStatus === 'DELIVERED').length;
   const activeUsers = users.filter((user: any) => user.orders?.length > 0).length;
@@ -127,6 +130,7 @@ export default async function AdminDashboard() {
               <div>
                 <h3 className="font-medium text-gray-500">Total Revenue</h3>
                 <p className="text-2xl font-bold mt-2">{formatCurrency(totalRevenue)}</p>
+                
               </div>
               <div className="bg-yellow-100 p-2 rounded-full">
                 <svg className="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">

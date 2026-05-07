@@ -9,9 +9,60 @@ import { Order } from '@/types/order';
 interface OrdersFilterProps {
   orders: Order[];
   onFilterChange: (filteredOrders: Order[]) => void;
+  onSelectionChange?: (selection: { year: string; month: string }) => void;
 }
 
-export default function OrdersFilter({ orders, onFilterChange }: OrdersFilterProps) {
+const CYCLE_START_YEAR = 2026;
+const CYCLE_START_MONTH = 4; // April (1-12)
+const CYCLE_START_DAY = 21;
+
+const getOrderCycleYearMonth = (placedAt: string): { year: string; month: string } | null => {
+  if (typeof placedAt !== 'string' || !placedAt.trim()) {
+    return null;
+  }
+
+  const fullDateMatch = placedAt.match(/^(\d{4})-(\d{2})-(\d{2})/);
+
+  let year: number;
+  let monthIndex: number;
+  let day: number;
+
+  if (fullDateMatch) {
+    year = Number(fullDateMatch[1]);
+    monthIndex = Number(fullDateMatch[2]) - 1;
+    day = Number(fullDateMatch[3]);
+  } else {
+    const parsed = new Date(placedAt);
+    if (Number.isNaN(parsed.getTime())) {
+      return null;
+    }
+
+    year = parsed.getUTCFullYear();
+    monthIndex = parsed.getUTCMonth();
+    day = parsed.getUTCDate();
+  }
+
+  const shouldApplyCycle =
+    year > CYCLE_START_YEAR ||
+    (year === CYCLE_START_YEAR && monthIndex + 1 > CYCLE_START_MONTH) ||
+    (year === CYCLE_START_YEAR && monthIndex + 1 === CYCLE_START_MONTH && day >= CYCLE_START_DAY);
+
+  // Apply payroll cycle only from April->May boundary onward.
+  if (shouldApplyCycle && day >= 21) {
+    monthIndex += 1;
+    if (monthIndex > 11) {
+      monthIndex = 0;
+      year += 1;
+    }
+  }
+
+  return {
+    year: String(year),
+    month: String(monthIndex + 1).padStart(2, '0'),
+  };
+};
+
+export default function OrdersFilter({ orders, onFilterChange, onSelectionChange }: OrdersFilterProps) {
   const [selectedYear, setSelectedYear] = useState<string>('all');
   const [selectedMonth, setSelectedMonth] = useState<string>('all');
   const [availableYears, setAvailableYears] = useState<number[]>([]);
@@ -21,7 +72,12 @@ export default function OrdersFilter({ orders, onFilterChange }: OrdersFilterPro
   useEffect(() => {
     const years = new Set<number>();
     orders.forEach(order => {
-      const year = new Date(order.placedAt).getFullYear();
+      const parsed = getOrderCycleYearMonth(order.placedAt);
+      if (!parsed) {
+        return;
+      }
+
+      const year = Number(parsed.year);
       if (year >= 2025) { // Starting from 2025 as per your requirement
         years.add(year);
       }
@@ -36,9 +92,13 @@ export default function OrdersFilter({ orders, onFilterChange }: OrdersFilterPro
     if (selectedYear && selectedYear !== 'all') {
       const monthsInYear = new Set<number>();
       orders.forEach(order => {
-        const orderDate = new Date(order.placedAt);
-        if (orderDate.getFullYear().toString() === selectedYear) {
-          monthsInYear.add(orderDate.getMonth()); // 0-11
+        const parsed = getOrderCycleYearMonth(order.placedAt);
+        if (!parsed) {
+          return;
+        }
+
+        if (parsed.year === selectedYear) {
+          monthsInYear.add(Number(parsed.month) - 1); // 0-11
         }
       });
 
@@ -63,20 +123,24 @@ export default function OrdersFilter({ orders, onFilterChange }: OrdersFilterPro
 
     if (selectedYear && selectedYear !== 'all') {
       filtered = filtered.filter(order => {
-        const orderYear = new Date(order.placedAt).getFullYear().toString();
-        return orderYear === selectedYear;
+        const parsed = getOrderCycleYearMonth(order.placedAt);
+        return parsed?.year === selectedYear;
       });
     }
 
     if (selectedMonth && selectedMonth !== 'all') {
       filtered = filtered.filter(order => {
-        const orderMonth = (new Date(order.placedAt).getMonth() + 1).toString().padStart(2, '0');
-        return orderMonth === selectedMonth;
+        const parsed = getOrderCycleYearMonth(order.placedAt);
+        return parsed?.month === selectedMonth;
       });
     }
 
     onFilterChange(filtered);
   }, [selectedYear, selectedMonth, orders, onFilterChange]);
+
+  useEffect(() => {
+    onSelectionChange?.({ year: selectedYear, month: selectedMonth });
+  }, [selectedYear, selectedMonth, onSelectionChange]);
 
   const clearFilters = () => {
     setSelectedYear('all');
