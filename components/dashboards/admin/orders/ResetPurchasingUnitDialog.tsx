@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Upload } from "lucide-react";
 import { toast } from "sonner";
 
@@ -24,7 +25,7 @@ export function ResetPurchasingUnitDialog({ token }: ResetPurchasingUnitDialogPr
   const [selectedMonth, setSelectedMonth] = useState(() => new Date().toISOString().slice(0, 7));
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "https://backend-staging.enugufoodmarket.com/api/v1";
+  const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
 
   const normalizeHeader = (value: string) =>
     value
@@ -33,12 +34,10 @@ export function ResetPurchasingUnitDialog({ token }: ResetPurchasingUnitDialogPr
       .toLowerCase()
       .replace(/\s+/g, "_");
 
-  const psnAliases = new Set([
+  const verificationIdAliases = new Set([
     "psn",
     "verification_id",
     "verificationid",
-    "employee_id",
-    "employeeid",
   ]);
 
   const amountAliases = new Set([
@@ -48,6 +47,12 @@ export function ResetPurchasingUnitDialog({ token }: ResetPurchasingUnitDialogPr
     "monthly_amount",
     "monthlyamount",
   ]);
+
+  const nameAliases = new Set(["name"]);
+  const phoneAliases = new Set(["phone", "phone_number", "phonenumber"]);
+  const governmentEntityAliases = new Set(["government_entity", "governmententity", "entity"]);
+  const employeeIdAliases = new Set(["employee_id", "employeeid"]);
+  const narrationAliases = new Set(["narration", "note", "notes"]);
 
   const parseCsvLine = (line: string) => {
     const cells: string[] = [];
@@ -118,6 +123,42 @@ export function ResetPurchasingUnitDialog({ token }: ResetPurchasingUnitDialogPr
     throw new Error("Unsupported file type. Please upload a CSV or XLSX file.");
   };
 
+  const downloadTemplate = async () => {
+    try {
+      const response = await fetch(
+        `${apiBaseUrl}/admin/export-loans`,
+        {
+          method: "GET",
+          headers: {
+            "Authorization": `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.message || "Failed to download template. Please try again."
+        );
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `repayment-template-${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(link);
+      toast.success("Template downloaded successfully.");
+    } catch (error) {
+      console.error("Download error:", error);
+      const errorMessage = error instanceof Error ? error.message : "Failed to download template. Please try again.";
+      toast.error(errorMessage);
+    }
+  };
+
   const confirmBulkRepayments = async () => {
     if (!selectedFile) {
       toast.error("Please select a file.");
@@ -140,12 +181,17 @@ export function ResetPurchasingUnitDialog({ token }: ResetPurchasingUnitDialogPr
 
       const headerCells = rows[0];
       const normalizedHeaders = headerCells.map((header) => normalizeHeader(header));
-      const verificationIdIndex = normalizedHeaders.findIndex((header) => psnAliases.has(header));
+      const verificationIdIndex = normalizedHeaders.findIndex((header) => verificationIdAliases.has(header));
       const amountIndex = normalizedHeaders.findIndex((header) => amountAliases.has(header));
+      const nameIndex = normalizedHeaders.findIndex((header) => nameAliases.has(header));
+      const phoneIndex = normalizedHeaders.findIndex((header) => phoneAliases.has(header));
+      const governmentEntityIndex = normalizedHeaders.findIndex((header) => governmentEntityAliases.has(header));
+      const employeeIdIndex = normalizedHeaders.findIndex((header) => employeeIdAliases.has(header));
+      const narrationIndex = normalizedHeaders.findIndex((header) => narrationAliases.has(header));
 
       if (verificationIdIndex === -1 || amountIndex === -1) {
         const foundColumns = headerCells.join(", ") || "none";
-        throw new Error(`File must contain 'PSN' and 'Amount' columns. Found: ${foundColumns}`);
+        throw new Error(`File must contain 'verification_id' and 'amount' columns. Found: ${foundColumns}`);
       }
 
       // Extract rows with required fields
@@ -157,16 +203,30 @@ export function ResetPurchasingUnitDialog({ token }: ResetPurchasingUnitDialogPr
       });
 
       if (validRows.length === 0) {
-        throw new Error("No rows with both 'PSN' and 'Amount' fields found in file.");
+        throw new Error("No rows with both 'verification_id' and 'amount' fields found in file.");
       }
 
       const escapeCsv = (value: string) => `"${value.replace(/"/g, '""')}"`;
+      const csvHeaders = ["verification_id", "amount"];
+      if (nameIndex !== -1) csvHeaders.push("name");
+      if (phoneIndex !== -1) csvHeaders.push("phone");
+      if (governmentEntityIndex !== -1) csvHeaders.push("government_entity");
+      if (employeeIdIndex !== -1) csvHeaders.push("employee_id");
+      if (narrationIndex !== -1) csvHeaders.push("narration");
+
       const normalizedCsv = [
-        "PSN,Amount",
+        csvHeaders.join(","),
         ...validRows.map((row) => {
-          const psn = String(row[verificationIdIndex] ?? "").trim();
-          const amount = String(row[amountIndex] ?? "").trim();
-          return `${escapeCsv(psn)},${escapeCsv(amount)}`;
+          const values = [
+            String(row[verificationIdIndex] ?? "").trim(),
+            String(row[amountIndex] ?? "").trim(),
+          ];
+          if (nameIndex !== -1) values.push(String(row[nameIndex] ?? "").trim());
+          if (phoneIndex !== -1) values.push(String(row[phoneIndex] ?? "").trim());
+          if (governmentEntityIndex !== -1) values.push(String(row[governmentEntityIndex] ?? "").trim());
+          if (employeeIdIndex !== -1) values.push(String(row[employeeIdIndex] ?? "").trim());
+          if (narrationIndex !== -1) values.push(String(row[narrationIndex] ?? "").trim());
+          return values.map(escapeCsv).join(",");
         }),
       ].join("\n");
 
@@ -254,46 +314,58 @@ export function ResetPurchasingUnitDialog({ token }: ResetPurchasingUnitDialogPr
             Upload the monthly repayment CSV to confirm employee repayments for the selected month. This uses the new admin repayments endpoint and applies the repayment records that drive purchasing limit updates.
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-4 mt-4">
-          <div className="space-y-2">
-            <Label htmlFor="reset-month">Select month</Label>
-            <Input
-              id="reset-month"
-              type="month"
-              value={selectedMonth}
-              onChange={(event) => setSelectedMonth(event.target.value)}
-              max={new Date().toISOString().slice(0, 7)}
-            />
-          </div>
+        <ScrollArea className="h-[400px] pr-4">
+          <div className="space-y-4 mt-4">
+            <div className="space-y-2">
+              <Label htmlFor="reset-month">Select month</Label>
+              <Input
+                id="reset-month"
+                type="month"
+                value={selectedMonth}
+                onChange={(event) => setSelectedMonth(event.target.value)}
+                max={new Date().toISOString().slice(0, 7)}
+              />
+            </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="reset-file">Upload file (CSV or XLSX)</Label>
-            <Input
-              id="reset-file"
-              ref={fileInputRef}
-              type="file"
-              accept=".csv,.xlsx,.xls"
-              onChange={handleFileChange}
-              disabled={isResetting}
-            />
-            {selectedFile && (
-              <p className="text-sm text-gray-500">
-                Selected file: <span className="font-medium">{selectedFile.name}</span>
-              </p>
-            )}
-          </div>
+            <div className="space-y-2">
+              <Label htmlFor="reset-file">Upload file (CSV or XLSX)</Label>
+              <Input
+                id="reset-file"
+                ref={fileInputRef}
+                type="file"
+                accept=".csv,.xlsx,.xls"
+                onChange={handleFileChange}
+                disabled={isResetting}
+              />
+              {selectedFile && (
+                <p className="text-sm text-gray-500">
+                  Selected file: <span className="font-medium">{selectedFile.name}</span>
+                </p>
+              )}
+            </div>
 
-          <div className="bg-green-50 border border-green-200 rounded p-3 text-sm text-green-800">
-            <p className="font-semibold mb-1">File Requirements:</p>
-            <ul className="list-disc list-inside space-y-1">
-              <li>Required columns: <code className="bg-white px-1 rounded">PSN</code> and <code className="bg-white px-1 rounded">Amount</code></li>
-              <li>The <code className="bg-white px-1 rounded">PSN</code> value must match the employee verification ID</li>
-              <li>Only rows with both PSN and Amount will be processed</li>
-            </ul>
+            <div className="bg-green-50 border border-green-200 rounded p-3 text-sm text-green-800">
+              <p className="font-semibold mb-1">File Requirements:</p>
+              <ul className="list-disc list-inside space-y-1">
+                <li><span className="font-medium">Required columns:</span> <code className="bg-white px-1 rounded">verification_id</code> and <code className="bg-white px-1 rounded">amount</code></li>
+                <li><span className="font-medium">Optional columns:</span> <code className="bg-white px-1 rounded">name</code>, <code className="bg-white px-1 rounded">phone</code>, <code className="bg-white px-1 rounded">government_entity</code>, <code className="bg-white px-1 rounded">employee_id</code>, <code className="bg-white px-1 rounded">narration</code></li>
+                <li>The <code className="bg-white px-1 rounded">verification_id</code> must match the employee verification ID</li>
+                <li>The <code className="bg-white px-1 rounded">narration</code> field maps to the note field on the repayment record</li>
+                <li>Only rows with both verification_id and amount will be processed</li>
+              </ul>
+            </div>
           </div>
-        </div>
+        </ScrollArea>
 
         <div className="flex justify-end gap-3 mt-6">
+          <Button
+            variant="outline"
+            onClick={downloadTemplate}
+            className="flex items-center gap-2"
+          >
+            <Upload className="h-4 w-4" />
+            Download Template
+          </Button>
           <Button
             variant="outline"
             onClick={() => {
