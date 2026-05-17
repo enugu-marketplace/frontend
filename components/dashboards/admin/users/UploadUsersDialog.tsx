@@ -74,7 +74,7 @@ export function UploadUsersDialog({ token }: UploadUsersDialogProps) {
 
       const requiredHeaders = [
         'firstname', 'lastname', 'email', 'phone',
-        'level', 'employee_id', 'government_entity', 'salary_per_month'
+        'level', 'employee_id', 'verification_id', 'government_entity', 'salary_per_month'
       ];
       
       const headers = cleanedLines[0].split(',');
@@ -100,6 +100,9 @@ export function UploadUsersDialog({ token }: UploadUsersDialogProps) {
 
         if (!rowData.employee_id) {
           errors.push(`Row ${i + 1}: Missing employee_id`);
+        }
+         if (!rowData.verification_id) {
+          errors.push(`Row ${i + 1}: Missing verification_id`);
         }
         
         if (!rowData.email) {
