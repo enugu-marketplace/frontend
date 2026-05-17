@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { DownloadCloud } from "lucide-react";
 import { useRouter } from "next/navigation";
+import * as XLSX from "xlsx";
 
 interface UploadUsersDialogProps {
   token: string;
@@ -27,9 +28,18 @@ export function UploadUsersDialog({ token }: UploadUsersDialogProps) {
   const [loading, setLoading] = useState(false);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setFile(e.target.files[0]);
+    const selectedFile = e.target.files?.[0];
+    if (!selectedFile) return;
+
+    const lowerFileName = selectedFile.name.toLowerCase();
+    if (!lowerFileName.endsWith(".csv") && !lowerFileName.endsWith(".xlsx")) {
+      toast.error("Please upload a .csv or .xlsx file");
+      e.target.value = "";
+      setFile(null);
+      return;
     }
+
+    setFile(selectedFile);
   };
    const handleSubmit = async (e: React.FormEvent) => {
   e.preventDefault();
@@ -42,7 +52,25 @@ export function UploadUsersDialog({ token }: UploadUsersDialogProps) {
   setLoading(true);
 
   try {
-    const csvContent = await file.text();
+    let csvContent = "";
+    const lowerFileName = file.name.toLowerCase();
+
+    if (lowerFileName.endsWith(".xlsx")) {
+      const workbook = XLSX.read(await file.arrayBuffer(), { type: "array" });
+      const firstSheet = workbook.SheetNames[0];
+
+      if (!firstSheet) {
+        toast.error("The XLSX file has no sheets");
+        return;
+      }
+
+      csvContent = XLSX.utils.sheet_to_csv(workbook.Sheets[firstSheet], {
+        blankrows: false,
+      });
+    } else {
+      csvContent = await file.text();
+    }
+
     console.log("[DEBUG] Original CSV content:", csvContent);
 
     // Define CSV validation types
@@ -291,16 +319,16 @@ export function UploadUsersDialog({ token }: UploadUsersDialogProps) {
         <span className="text-[13px] font-normal">Click on the download template below to get the csv template and after filling it, upload the file here to create new user(s)</span> 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-2">
-            <Label htmlFor="csvFile">CSV File</Label>
+            <Label htmlFor="csvFile">CSV/XLSX File</Label>
             <Input
               id="csvFile"
               type="file"
-              accept=".csv"
+              accept=".csv,.xlsx"
               onChange={handleFileChange}
               required
             />
             <p className="text-sm text-muted-foreground">
-              CSV file with user data (max 1000 users)
+              CSV or XLSX file with user data (max 1000 users)
             </p>
           </div>
 
