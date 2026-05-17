@@ -28,8 +28,43 @@ export function UploadUsersDialog({ token }: UploadUsersDialogProps) {
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setFile(e.target.files[0]);
+      const selectedFile = e.target.files[0];
+      const fileName = selectedFile.name.toLowerCase();
+      const isSupportedFile =
+        fileName.endsWith(".csv") || fileName.endsWith(".xlsx") || fileName.endsWith(".xls");
+
+      if (!isSupportedFile) {
+        toast.error("Please upload a CSV or XLSX file");
+        setFile(null);
+        e.target.value = "";
+        return;
+      }
+
+      setFile(selectedFile);
     }
+  };
+
+  const getCsvContentFromFile = async (selectedFile: File): Promise<string> => {
+    const fileName = selectedFile.name.toLowerCase();
+
+    if (fileName.endsWith(".csv")) {
+      return selectedFile.text();
+    }
+
+    if (fileName.endsWith(".xlsx") || fileName.endsWith(".xls")) {
+      const XLSX = await import("xlsx");
+      const workbook = XLSX.read(await selectedFile.arrayBuffer(), { type: "array" });
+      const firstSheetName = workbook.SheetNames[0];
+
+      if (!firstSheetName) {
+        throw new Error("The spreadsheet has no sheets");
+      }
+
+      const sheet = workbook.Sheets[firstSheetName];
+      return XLSX.utils.sheet_to_csv(sheet, { blankrows: false });
+    }
+
+    throw new Error("Unsupported file type. Please upload a CSV or XLSX file.");
   };
    const handleSubmit = async (e: React.FormEvent) => {
   e.preventDefault();
@@ -42,7 +77,7 @@ export function UploadUsersDialog({ token }: UploadUsersDialogProps) {
   setLoading(true);
 
   try {
-    const csvContent = await file.text();
+    const csvContent = await getCsvContentFromFile(file);
     console.log("[DEBUG] Original CSV content:", csvContent);
 
     // Define CSV validation types
@@ -284,26 +319,26 @@ export function UploadUsersDialog({ token }: UploadUsersDialogProps) {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button variant="outline" className="ml-2">
-          Upload CSV
+          Upload CSV/XLSX
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[500px] font-header">
         <DialogHeader>
           <DialogTitle>Bulk Create Users <br/> </DialogTitle>
         </DialogHeader>
-        <span className="text-[13px] font-normal">Click on the download template below to get the csv template and after filling it, upload the file here to create new user(s)</span> 
+        <span className="text-[13px] font-normal">Click on the download template below to get the csv template and after filling it, upload the CSV/XLSX file here to create new user(s)</span> 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-2">
-            <Label htmlFor="csvFile">CSV File</Label>
+            <Label htmlFor="csvFile">CSV/XLSX File</Label>
             <Input
               id="csvFile"
               type="file"
-              accept=".csv"
+              accept=".csv,.xlsx,.xls"
               onChange={handleFileChange}
               required
             />
             <p className="text-sm text-muted-foreground">
-              CSV file with user data (max 1000 users)
+              CSV or XLSX file with user data (max 1000 users)
             </p>
           </div>
 
