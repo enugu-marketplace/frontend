@@ -44,6 +44,29 @@ export function UploadUsersDialog({ token }: UploadUsersDialogProps) {
     }
   };
 
+  const getCsvContentFromFile = async (selectedFile: File): Promise<string> => {
+    const fileName = selectedFile.name.toLowerCase();
+
+    if (fileName.endsWith(".csv")) {
+      return selectedFile.text();
+    }
+
+    if (fileName.endsWith(".xlsx") || fileName.endsWith(".xls")) {
+      const XLSX = await import("xlsx");
+      const workbook = XLSX.read(await selectedFile.arrayBuffer(), { type: "array" });
+      const firstSheetName = workbook.SheetNames[0];
+
+      if (!firstSheetName) {
+        throw new Error("The spreadsheet has no sheets");
+      }
+
+      const sheet = workbook.Sheets[firstSheetName];
+      return XLSX.utils.sheet_to_csv(sheet, { blankrows: false });
+    }
+
+    throw new Error("Unsupported file type. Please upload a CSV or XLSX file.");
+  };
+
   const getRowsFromFile = async (selectedFile: File): Promise<string[][]> => {
     const XLSX = await import("xlsx");
     const fileName = selectedFile.name.toLowerCase();
@@ -77,8 +100,8 @@ export function UploadUsersDialog({ token }: UploadUsersDialogProps) {
   setLoading(true);
 
   try {
-    const sheetRows = await getRowsFromFile(file);
-    console.log("[DEBUG] Parsed sheet rows:", sheetRows);
+    const csvContent = await getCsvContentFromFile(file);
+    console.log("[DEBUG] Original CSV content:", csvContent);
 
     // Define CSV validation types
     type CSVValidationResult = {
@@ -355,6 +378,9 @@ export function UploadUsersDialog({ token }: UploadUsersDialogProps) {
 
         if (!rowData.government_entity) {
           errors.push(`Row ${i + 1}: Missing government_entity`);
+        }
+         if (!rowData.verification_id) {
+          errors.push(`Row ${i + 1}: Missing verification_id`);
         }
         
         if (rowData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(rowData.email)) {
