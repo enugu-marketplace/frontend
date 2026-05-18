@@ -191,7 +191,7 @@ export function UploadUsersDialog({ token }: UploadUsersDialogProps) {
       ];
       const identityHeaders = ['firstname', 'lastname', 'level', 'government_entity', 'verification_id'];
       const personAnchorHeaders = ['firstname', 'lastname', 'email', 'phone'];
-      const defaultGovernmentEntity = 'POST PRIMARY SCHOOL MANAGEMENT BOARD';
+      const defaultGovernmentEntity = 'OFFICE OF THE SURVEYOR GENERAL';
       const requiredHeaders = expectedHeaders.filter(
         (header) => !['employee_id', 'phone', 'email'].includes(header)
       );
