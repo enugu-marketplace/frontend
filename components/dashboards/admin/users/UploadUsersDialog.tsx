@@ -603,7 +603,7 @@ export function UploadUsersDialog({ token }: UploadUsersDialogProps) {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button variant="outline" className="ml-2">
-          Upload CSV/XLSX
+          Upload Bulk Users
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[500px] font-header">

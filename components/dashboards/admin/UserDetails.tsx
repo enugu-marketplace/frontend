@@ -14,6 +14,7 @@ import { UserWithRelations } from "@/types/index";
 import { useEffect, useState } from "react";
 import { EditUserDialog } from "./users/EditUserDialog";
 import { DeleteUserDialog } from "./users/DeleteUserDialog";
+import { AddUnitDialog } from "./users/AddUnitDialog";
 
 interface UserDetailsProps {
   userData: UserWithRelations;
@@ -146,6 +147,7 @@ export function UserDetails({ userData, token }: UserDetailsProps) {
                 token={token} 
                 onSuccess={refetch} 
               />
+              <AddUnitDialog user={displayUser} triggerLabel="Add Unit" />
               <Button 
                 variant="outline" 
                 size="sm" 

@@ -13,6 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { UserWithRelations } from "@/types/index";
 import { useState, useMemo } from "react";
+import { AddUnitDialog } from "./AddUnitDialog";
 
 const columns: ColumnDef<UserWithRelations>[] = [
   // {
@@ -114,11 +115,14 @@ const columns: ColumnDef<UserWithRelations>[] = [
     cell: ({ row }) => {
       const user = row.original;
       return (
-        <Link href={`/admin-dashboard/users/${user.id}`} legacyBehavior passHref>
-          <Button variant="outline" size="sm" className="hover:bg-blue-50 text-[12px] hover:text-blue-600">
-            View Details
-          </Button>
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link href={`/admin-dashboard/users/${user.id}`} legacyBehavior passHref>
+            <Button variant="outline" size="sm" className="hover:bg-blue-50 text-[12px] hover:text-blue-600">
+              View Details
+            </Button>
+          </Link>
+          <AddUnitDialog user={user} />
+        </div>
       );
     },
   },
