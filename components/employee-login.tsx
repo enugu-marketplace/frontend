@@ -14,6 +14,7 @@ const formSchema = z.object({
 
 export default function EmployeeLogin() {
    const [isSubmitting, setIsSubmitting] = useState(false);
+  const TEMP_PREVENT_EMPLOYEE_LOGIN_REDIRECT = false;
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -39,6 +40,11 @@ export default function EmployeeLogin() {
       
       if (!response.ok) {
         throw new Error(data.message || 'Failed to initiate login');
+      }
+
+      if (TEMP_PREVENT_EMPLOYEE_LOGIN_REDIRECT) {
+        toast.success(`Init success. nextStep: ${data.nextStep || 'unknown'}, userId: ${data.userId || 'n/a'}`);
+        return;
       }
 
       // Get the returnUrl from query params
@@ -82,7 +88,7 @@ export default function EmployeeLogin() {
                 </FormItem>
               )}
             />
-            <Button type="submit" className="w-full bg-green-700 hover:bg-green-600">
+            <Button type="submit" className="w-full bg-green-700 hover:bg-green-600" disabled={isSubmitting}>
              {isSubmitting ? "Processing..." : "Continue"}
             </Button>
           </form>
