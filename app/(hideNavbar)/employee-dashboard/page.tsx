@@ -8,20 +8,9 @@ import { LoanStats } from '@/components/dashboards/users/LoanStats';
 
 interface ComplianceData {
   id: string;
-  userId: string;
-  form_url: string;
-  status: string;
-  createdAt: string;
-  updatedAt: string;
-  user: {
-    id: string;
-    loan_unit: number;
-    loan_amount_collected: number;
-    salary_per_month: number;
-    government_entity: string;
-    is_compliance_submitted: boolean;
-    status: string;
-  };
+  loan_unit: number;
+  loan_amount_collected: number;
+  is_compliance_submitted: boolean;
 }
 
 interface ComplianceResponse {
@@ -53,10 +42,10 @@ export default async function EmployeeDashboard() {
     });
     totalOrders = ordersResponse.data.data?.length || 0;
 
-    // Fetch compliance data for fresh loan info
+    // Fetch profile data for fresh loan info
     try {
       const complianceResponse = await axios.get<ComplianceResponse>(
-        `${process.env.NEXT_PUBLIC_API_BASE_URL}/user/get-compliance`,
+        `${process.env.NEXT_PUBLIC_API_BASE_URL}/user/profile`,
         {
           headers: { 
             Authorization: `Bearer ${session.user.token}` 
@@ -64,8 +53,8 @@ export default async function EmployeeDashboard() {
         }
       );
       
-      if (complianceResponse.data?.data?.user) {
-        const userData = complianceResponse.data.data.user;
+      if (complianceResponse.data?.data) {
+        const userData = complianceResponse.data.data;
         initialLoanData = {
           loan_unit: userData.loan_unit || 0,
           loan_amount_collected: userData.loan_amount_collected || 0
@@ -73,7 +62,7 @@ export default async function EmployeeDashboard() {
         complianceStatus = userData.is_compliance_submitted || false;
       }
     } catch (complianceError) {
-      console.log('⚠️ Using session data for loan info (compliance endpoint not available)');
+      console.log('⚠️ Using session data for loan info (profile endpoint not available)');
       // Fallback to session data if compliance endpoint fails
     }
   } catch (error) {

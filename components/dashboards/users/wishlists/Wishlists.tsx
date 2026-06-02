@@ -12,6 +12,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Heart, HeartOff } from 'lucide-react';
+import { fetchCreditSnapshot } from '@/lib/credit-feedback';
 
 interface WishlistItem {
   id: string;
@@ -136,8 +137,10 @@ const WishlistPage = () => {
       );
       return response.data;
     },
-    onSuccess: () => {
-      toast.success('Item added to cart!', { 
+    onSuccess: async () => {
+      const creditSnapshot = await fetchCreditSnapshot(user?.token || '');
+      toast.success('Item added to cart!', {
+        description: creditSnapshot?.message,
         action: {
           label: 'View Cart',
           onClick: () => router.push('/cart')

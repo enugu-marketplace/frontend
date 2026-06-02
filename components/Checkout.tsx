@@ -1,7 +1,7 @@
 'use client';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 import { toast } from 'sonner';
@@ -39,6 +39,8 @@ interface ComplianceUserData {
   salary_per_month: number;
   loan_unit: number;
   loan_amount_collected: number;
+  loan_extension: number;
+  max_extension_limit: number;
   is_address_set: boolean;
   is_compliance_submitted: boolean;
   status: string;
@@ -58,7 +60,7 @@ interface ComplianceData {
 
 interface ComplianceResponse {
   message: string;
-  data: ComplianceData;
+  data: ComplianceData | ComplianceUserData;
 }
 
 export default function CheckoutPage() {
@@ -67,6 +69,7 @@ export default function CheckoutPage() {
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const hasShownExtensionSwitchToast = useRef(false);
 
   useEffect(() => {
     fetch('/api/auth/session')
@@ -91,23 +94,29 @@ export default function CheckoutPage() {
     enabled: !!user?.token
   });
 
-  // Fetch compliance data (purchasing limit)
+  // Fetch latest profile data (purchasing + extension state)
   const { 
-    data: complianceResponse, 
-    isLoading: isComplianceLoading,
-    error: complianceError 
+    data: profileData,
+    isLoading: isProfileLoading,
+    error: profileError 
   } = useQuery({
-    queryKey: ['compliance', user?.token],
-    queryFn: async (): Promise<ComplianceData | null> => {
+    queryKey: ['user-profile', user?.token],
+    queryFn: async (): Promise<ComplianceUserData | null> => {
       try {
         const res = await axios.get<ComplianceResponse>(
-          `${process.env.NEXT_PUBLIC_API_BASE_URL}/user/get-compliance`,
+          `${process.env.NEXT_PUBLIC_API_BASE_URL}/user/profile`,
           { headers: { Authorization: `Bearer ${user?.token}` } }
         );
-        console.log('📊 Compliance data response:', res.data);
-        return res.data.data || null;
+        const payload = res.data?.data as ComplianceData | ComplianceUserData | undefined;
+        if (!payload) return null;
+
+        if ('user' in payload) {
+          return payload.user;
+        }
+
+        return payload;
       } catch (error) {
-        console.error('Error fetching compliance data:', error);
+        console.error('Error fetching profile data:', error);
         return null;
       }
     },
@@ -142,8 +151,8 @@ export default function CheckoutPage() {
       toast.success('Order placed successfully!');
       // Clear cart after successful order
       queryClient.invalidateQueries({ queryKey: ['cart'] });
-      // Refresh compliance data after order (to get updated loan_amount_collected)
-      queryClient.invalidateQueries({ queryKey: ['compliance'] });
+      // Refresh profile data after order to get latest loan fields.
+      queryClient.invalidateQueries({ queryKey: ['user-profile'] });
       router.push('/employee-dashboard/order-confirmation');
     },
     onError: (error: any) => {
@@ -165,23 +174,44 @@ export default function CheckoutPage() {
 
   const total = subtotal;
 
-  // Get loan data from compliance endpoint (fallback to session data)
-  const complianceUserData = complianceResponse?.user;
-  const loanUnit = complianceUserData?.loan_unit || user?.loan_unit || 0;
-  const loanAmountCollected = complianceUserData?.loan_amount_collected || user?.loan_amount_collected || 0;
-  const isComplianceSubmitted = complianceUserData?.is_compliance_submitted ?? user?.is_compliance_submitted ?? false;
-  const governmentEntity = complianceUserData?.government_entity || user?.government_entity || '';
-  const complianceStatus = complianceResponse?.status;
+  // Loan fields from profile endpoint, with session fallback.
+  const loanUnit = profileData?.loan_unit ?? user?.loan_unit ?? 0;
+  const loanAmountCollected = profileData?.loan_amount_collected ?? user?.loan_amount_collected ?? 0;
+  const loanExtension = profileData?.loan_extension ?? user?.loan_extension ?? 0;
+  const maxExtensionLimit = profileData?.max_extension_limit ?? user?.max_extension_limit ?? 0;
+  const salaryPerMonth = profileData?.salary_per_month ?? user?.salary_per_month ?? 0;
+  const isComplianceSubmitted = profileData?.is_compliance_submitted ?? user?.is_compliance_submitted ?? false;
+  const governmentEntity = profileData?.government_entity || user?.government_entity || '';
+  const complianceStatus = profileData?.status;
 
   // Calculate if order exceeds credit limit
   const getCreditExceeded = () => {
-    const availableCredit = loanUnit - loanAmountCollected;
+    const availableCredit = loanUnit + (maxExtensionLimit - loanExtension);
     return total > availableCredit;
   };
 
   const isCreditExceeded = getCreditExceeded();
-  const availableCredit = loanUnit - loanAmountCollected;
-  const usedPercentage = loanUnit > 0 ? (loanAmountCollected / loanUnit) * 100 : 0;
+  const availableCredit = Math.max(0, loanUnit + (maxExtensionLimit - loanExtension));
+  const totalPurchasingUnit = salaryPerMonth > 0 ? salaryPerMonth * 0.3 : Math.max(loanUnit, loanAmountCollected);
+  const purchasingUnitUsed = Math.max(0, totalPurchasingUnit - loanUnit);
+  const extensionRemaining = Math.max(0, maxExtensionLimit - loanExtension);
+  const isUsingExtension = loanExtension > 0;
+  const hasSwitchedToExtension = loanUnit <= 0 && extensionRemaining > 0;
+  const purchasingUnitProgress = totalPurchasingUnit > 0
+    ? Math.min(100, (loanUnit / totalPurchasingUnit) * 100)
+    : 0;
+  const extensionProgress = maxExtensionLimit > 0
+    ? Math.min(100, (extensionRemaining / maxExtensionLimit) * 100)
+    : 0;
+
+  useEffect(() => {
+    if (hasSwitchedToExtension && !hasShownExtensionSwitchToast.current) {
+      toast.warning("Purchasing unit exhausted", {
+        description: "You are now spending from your extension buffer (10% of salary).",
+      });
+      hasShownExtensionSwitchToast.current = true;
+    }
+  }, [hasSwitchedToExtension]);
 
   // Determine if button should be disabled
   const isButtonDisabled = 
@@ -189,7 +219,7 @@ export default function CheckoutPage() {
     !cartItems || 
     cartItems.length === 0 ||
     isCreditExceeded ||
-    isComplianceLoading;
+    isProfileLoading;
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -199,7 +229,7 @@ export default function CheckoutPage() {
   }, [status, router]);
 
   // Show loading state
-  if (status === 'loading' || isCartLoading || isComplianceLoading) {
+  if (status === 'loading' || isCartLoading || isProfileLoading) {
     return (
       <div className="container py-8">
         <Skeleton className="h-8 w-48 mb-6" />
@@ -218,7 +248,7 @@ export default function CheckoutPage() {
   }
 
   // Show compliance error
-  if (complianceError) {
+  if (profileError) {
     return (
       <div className="container py-8">
         <div className="max-w-2xl mx-auto">
@@ -324,8 +354,23 @@ export default function CheckoutPage() {
     <div className="container py-8">
       <h1 className="text-3xl font-bold mb-8">Checkout</h1>
       
+      {/* Sticky extension warning */}
+      {isUsingExtension && (
+        <div className="sticky top-20 z-20 mb-6 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 shadow-sm">
+          <p className="text-sm font-semibold text-amber-900">
+            Warning: You&apos;re currently using your extension credit.
+          </p>
+          <p className="text-sm text-amber-800 mt-1">
+            {new Intl.NumberFormat('en-NG', {
+              style: 'currency',
+              currency: 'NGN',
+            }).format(loanExtension)} will be deducted from next month&apos;s allocation.
+          </p>
+        </div>
+      )}
+
       {/* Credit Limit Banner */}
-      {loanUnit > 0 && (
+      {(loanUnit > 0 || maxExtensionLimit > 0) && (
         <div className="mb-6 p-4 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -346,7 +391,7 @@ export default function CheckoutPage() {
                 </svg>
               </div>
               <div>
-                <h3 className="font-medium text-green-800">Purchasing Limit</h3>
+                <h3 className="font-medium text-green-800">Purchasing Credit</h3>
                 <p className="text-sm text-green-600">
                   Real-time credit balance: {new Intl.NumberFormat('en-NG', {
                     style: 'currency',
@@ -360,7 +405,7 @@ export default function CheckoutPage() {
                 Updated just now
               </p>
               <button 
-                onClick={() => queryClient.invalidateQueries({ queryKey: ['compliance'] })}
+                onClick={() => queryClient.invalidateQueries({ queryKey: ['user-profile'] })}
                 className="text-xs text-green-600 hover:text-green-800 underline"
               >
                 Refresh
@@ -530,8 +575,17 @@ export default function CheckoutPage() {
                 {/* Credit Limit Information */}
                 <div className="p-3 bg-gray-50 rounded-lg border">
                   <div className="flex justify-between items-center mb-1">
-                    <span className="text-sm font-medium">Total Credit Limit</span>
+                    <span className="text-sm font-medium">Total Purchasing Unit</span>
                     <span className="text-sm font-medium text-green-600">
+                      {new Intl.NumberFormat('en-NG', {
+                        style: 'currency',
+                        currency: 'NGN',
+                      }).format(totalPurchasingUnit)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">Purchasing Unit Remaining</span>
+                    <span className="text-gray-600">
                       {new Intl.NumberFormat('en-NG', {
                         style: 'currency',
                         currency: 'NGN',
@@ -539,16 +593,25 @@ export default function CheckoutPage() {
                     </span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Credit Used</span>
-                    <span className="text-gray-600">
+                    <span className="text-gray-600">Extension Buffer Remaining</span>
+                    <span className="text-yellow-700">
                       {new Intl.NumberFormat('en-NG', {
                         style: 'currency',
                         currency: 'NGN',
-                      }).format(loanAmountCollected)}
+                      }).format(extensionRemaining)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">Extension Buffer Used</span>
+                    <span className="text-yellow-700">
+                      {new Intl.NumberFormat('en-NG', {
+                        style: 'currency',
+                        currency: 'NGN',
+                      }).format(loanExtension)}
                     </span>
                   </div>
                   <div className="flex justify-between text-sm font-medium mt-1">
-                    <span className="text-green-700">Available Credit</span>
+                    <span className="text-green-700">Available Credit (spendable now)</span>
                     <span className="text-green-700">
                       {new Intl.NumberFormat('en-NG', {
                         style: 'currency',
@@ -556,22 +619,60 @@ export default function CheckoutPage() {
                       }).format(availableCredit)}
                     </span>
                   </div>
-                  {loanUnit > 0 && (
+                  {(totalPurchasingUnit > 0 || maxExtensionLimit > 0) && (
                     <div className="mt-2">
-                      <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                        <div 
-                          className="h-full bg-green-500 rounded-full transition-all duration-300"
-                          style={{ 
-                            width: `${Math.min(100, usedPercentage)}%` 
-                          }}
-                        />
+                      <div className="mb-2">
+                        <div className="flex justify-between text-xs text-gray-500 mb-1">
+                          <span>Purchasing Unit</span>
+                          <span>
+                            {new Intl.NumberFormat('en-NG', {
+                              style: 'currency',
+                              currency: 'NGN',
+                            }).format(loanUnit)} remaining
+                          </span>
+                        </div>
+                        <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                          <div
+                            className={`${loanUnit <= 0 ? 'bg-red-500' : 'bg-green-500'} h-full rounded-full transition-all duration-300`}
+                            style={{ width: `${purchasingUnitProgress}%` }}
+                          />
+                        </div>
+                        <p className="text-[11px] text-gray-500 mt-1">
+                          Used: {new Intl.NumberFormat('en-NG', {
+                            style: 'currency',
+                            currency: 'NGN',
+                          }).format(purchasingUnitUsed)} of {new Intl.NumberFormat('en-NG', {
+                            style: 'currency',
+                            currency: 'NGN',
+                          }).format(totalPurchasingUnit)}
+                        </p>
                       </div>
-                      <div className="flex justify-between text-xs text-gray-500 mt-1">
-                        <span>0%</span>
-                        <span>
-                          {Math.min(100, usedPercentage).toFixed(1)}% used
-                        </span>
-                        <span>100%</span>
+
+                      <div>
+                        <div className="flex justify-between text-xs text-gray-500 mb-1">
+                          <span>Extension Buffer</span>
+                          <span>
+                            {new Intl.NumberFormat('en-NG', {
+                              style: 'currency',
+                              currency: 'NGN',
+                            }).format(extensionRemaining)} remaining
+                          </span>
+                        </div>
+                        <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-yellow-500 rounded-full transition-all duration-300"
+                            style={{ width: `${extensionProgress}%` }}
+                          />
+                        </div>
+                        <p className="text-[11px] text-gray-500 mt-1">
+                          Used: {new Intl.NumberFormat('en-NG', {
+                            style: 'currency',
+                            currency: 'NGN',
+                          }).format(loanExtension)} of {new Intl.NumberFormat('en-NG', {
+                            style: 'currency',
+                            currency: 'NGN',
+                          }).format(maxExtensionLimit)}
+                        </p>
                       </div>
                     </div>
                   )}
@@ -589,7 +690,7 @@ export default function CheckoutPage() {
                   </div>
                   
                   {/* Remaining Credit After Purchase */}
-                  {loanUnit > 0 && (
+                  {(loanUnit > 0 || maxExtensionLimit > 0) && (
                     <div className="mt-2 p-2 bg-green-50 rounded border border-green-100">
                       <div className="flex justify-between text-sm">
                         <span className="text-green-800">Credit After Purchase</span>

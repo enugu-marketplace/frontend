@@ -11,6 +11,8 @@ export interface User {
   salary_per_month: number;
   loan_unit: number;
   loan_amount_collected: number;
+  loan_extension?: number;
+  max_extension_limit?: number;
   is_address_set: boolean;
   role: string;
   profile_image: string | null;

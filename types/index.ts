@@ -50,6 +50,8 @@ export interface UserWithRelations {
   verification_id: string ;
   loan_unit: number;
   loan_amount_collected: number;
+  loan_extension?: number;
+  max_extension_limit?: number;
   is_address_set: boolean;
   password: string | null;
   otp: string | null;

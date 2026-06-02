@@ -9,6 +9,14 @@ import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 import {
   Select,
@@ -28,6 +36,11 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import ConsentUpload from "@/components/ConsentUpload";
+import {
+  evaluateCartExtensionDecision,
+  fetchCreditSnapshot,
+  removeLatestCartItemByProductId,
+} from "@/lib/credit-feedback";
 
 interface Product {
   id: string;
@@ -41,6 +54,15 @@ interface Product {
   variants: any[];
   rating?: number;
   reviewCount?: number;
+}
+
+interface ExtensionConfirmState {
+  open: boolean;
+  productId: string;
+  productName: string;
+  loanUnit: number;
+  extensionRemaining: number;
+  cartTotal: number;
 }
 
 function useCart(token?: string) {
@@ -113,6 +135,15 @@ export default function ProductsPage() {
   const [isAddingToCart, setIsAddingToCart] = useState(false);
   const [wishlistItems, setWishlistItems] = useState<string[]>([]);
   const [showComplianceDialog, setShowComplianceDialog] = useState(false);
+  const [extensionConfirm, setExtensionConfirm] = useState<ExtensionConfirmState>({
+    open: false,
+    productId: "",
+    productName: "",
+    loanUnit: 0,
+    extensionRemaining: 0,
+    cartTotal: 0,
+  });
+  const [isRevertingCartItem, setIsRevertingCartItem] = useState(false);
   const [expandedDescriptions, setExpandedDescriptions] = useState<Set<string>>(new Set());
   const { ref, inView } = useInView();
   const router = useRouter();
@@ -452,19 +483,40 @@ export default function ProductsPage() {
         queryKey: ['cart', user.token],
         exact: true,
       });
+
+      const decision = await evaluateCartExtensionDecision(user.token);
+
+      if (decision?.insufficientCredit) {
+        toast.error("Your cart total exceeds your available credit.", {
+          id: toastId,
+          description: "Please remove some items before checking out.",
+        });
+        return;
+      }
+
+      if (decision?.requiresExtension) {
+        toast.dismiss(toastId);
+        setExtensionConfirm({
+          open: true,
+          productId: product.id,
+          productName: product.name,
+          loanUnit: decision.loanUnit,
+          extensionRemaining: decision.extensionRemaining,
+          cartTotal: decision.cartTotal,
+        });
+        return;
+      }
+
+      const creditSnapshot = await fetchCreditSnapshot(user.token);
       
       toast.success("Item added to cart!", {
         id: toastId,
+        description: creditSnapshot?.message,
         action: {
           label: "View Cart",
           onClick: () => router.push("/employee-dashboard/cart"),
         },
       });
-      
-      // Small delay to ensure cart is updated before redirect
-      setTimeout(() => {
-        router.push("/employee-dashboard/cart");
-      }, 500);
     } else {
       // Handle other successful status codes if needed
       toast.error("Unexpected response from server", {
@@ -525,6 +577,38 @@ export default function ProductsPage() {
   ) => {
     const target = e.target as HTMLImageElement;
     target.src = "/placeholder-product.jpg";
+  };
+
+  const formatCurrency = (amount: number) =>
+    new Intl.NumberFormat("en-NG", {
+      style: "currency",
+      currency: "NGN",
+    }).format(amount);
+
+  const handleContinueWithExtension = () => {
+    setExtensionConfirm((prev) => ({ ...prev, open: false }));
+    router.push("/employee-dashboard/cart");
+  };
+
+  const handleCancelExtensionUsage = async () => {
+    if (!user?.token || !extensionConfirm.productId) {
+      setExtensionConfirm((prev) => ({ ...prev, open: false }));
+      return;
+    }
+
+    try {
+      setIsRevertingCartItem(true);
+      const removed = await removeLatestCartItemByProductId(user.token, extensionConfirm.productId);
+      if (removed) {
+        toast.success(`${extensionConfirm.productName} removed from cart.`);
+      } else {
+        toast.error("Could not remove item automatically. Please remove it manually in cart.");
+      }
+      await queryClient.invalidateQueries({ queryKey: ["cart", user.token] });
+    } finally {
+      setIsRevertingCartItem(false);
+      setExtensionConfirm((prev) => ({ ...prev, open: false }));
+    }
   };
 
   return (
@@ -849,6 +933,55 @@ export default function ProductsPage() {
             returnUrl={window.location.pathname}
           />
         )}
+
+        <Dialog
+          open={extensionConfirm.open}
+          onOpenChange={(open) => {
+            if (!open && !isRevertingCartItem) {
+              handleCancelExtensionUsage();
+            }
+          }}
+        >
+          <DialogContent className="sm:max-w-[560px]">
+            <DialogHeader>
+              <DialogTitle className="text-xl">Use Extension Buffer To Complete This Purchase?</DialogTitle>
+              <DialogDescription className="text-sm">
+                Your purchasing unit cannot fully cover this cart total. You can continue using your extension buffer (10% of salary).
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-3 rounded-lg border bg-amber-50 p-4">
+              <p className="text-sm text-amber-900">
+                <span className="font-semibold">Item added:</span> {extensionConfirm.productName}
+              </p>
+              <p className="text-sm text-amber-900">
+                <span className="font-semibold">Purchasing unit remaining:</span> {formatCurrency(extensionConfirm.loanUnit)}
+              </p>
+              <p className="text-sm text-amber-900">
+                <span className="font-semibold">Extension buffer available:</span> {formatCurrency(extensionConfirm.extensionRemaining)}
+              </p>
+              <p className="text-sm text-amber-900">
+                <span className="font-semibold">Current cart total:</span> {formatCurrency(extensionConfirm.cartTotal)}
+              </p>
+              <p className="text-sm text-amber-800">
+                If you continue, the extension amount used will be deducted from your next salary cycle.
+              </p>
+            </div>
+
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={handleCancelExtensionUsage}
+                disabled={isRevertingCartItem}
+              >
+                {isRevertingCartItem ? "Removing item..." : "Cancel And Remove Item"}
+              </Button>
+              <Button className="bg-orange-700 hover:bg-orange-600" onClick={handleContinueWithExtension}>
+                Continue To Cart
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </TooltipProvider>
     </div>
   );
