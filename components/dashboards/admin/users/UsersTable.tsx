@@ -97,7 +97,7 @@ const columns: ColumnDef<UserWithRelations>[] = [
   },
   {
     accessorKey: "loan_amount_collected",
-    header: "Purchasing Unit Taken (₦)",
+    header: "Total Borrowed This Month (₦)",
     cell: ({ row }) => {
       const amount = parseFloat(row.getValue("loan_amount_collected") || "0");
       return (
@@ -106,6 +106,75 @@ const columns: ColumnDef<UserWithRelations>[] = [
             style: 'currency',
             currency: 'NGN'
           }).format(amount)}
+        </div>
+      );
+    },
+  },
+  {
+    accessorKey: "loan_extension",
+    header: "Extension Used (₦)",
+    cell: ({ row }) => {
+      const amount = Number(row.original.loan_extension || 0);
+      const isUsingExtension = amount > 0;
+
+      return (
+        <div>
+          <div className={`font-medium ${isUsingExtension ? "text-amber-700" : "text-gray-700"}`}>
+            {new Intl.NumberFormat('en-NG', {
+              style: 'currency',
+              currency: 'NGN'
+            }).format(amount)}
+          </div>
+          {isUsingExtension && (
+            <p className="text-[11px] text-amber-700">Deducts from next month</p>
+          )}
+        </div>
+      );
+    },
+  },
+  {
+    id: "extension_buffer_remaining",
+    header: "Extension Buffer Remaining (₦)",
+    cell: ({ row }) => {
+      const maxExtension = Number(row.original.max_extension_limit || 0);
+      const extensionUsed = Number(row.original.loan_extension || 0);
+      const extensionRemaining = Math.max(0, maxExtension - extensionUsed);
+
+      return (
+        <div className="font-medium text-yellow-700">
+          {new Intl.NumberFormat('en-NG', {
+            style: 'currency',
+            currency: 'NGN'
+          }).format(extensionRemaining)}
+        </div>
+      );
+    },
+  },
+  {
+    id: "available_credit",
+    header: "Available Credit (₦)",
+    cell: ({ row }) => {
+      const loanUnit = Number(row.original.loan_unit || 0);
+      const maxExtension = Number(row.original.max_extension_limit || 0);
+      const extensionUsed = Number(row.original.loan_extension || 0);
+
+      const availableCredit = Math.max(0, loanUnit + (maxExtension - extensionUsed));
+      const extensionProgress = maxExtension > 0 ? (extensionUsed / maxExtension) * 100 : 0;
+
+      return (
+        <div className="space-y-1 min-w-[180px]">
+          <div className="font-semibold text-blue-700">
+            {new Intl.NumberFormat('en-NG', {
+              style: 'currency',
+              currency: 'NGN'
+            }).format(availableCredit)}
+          </div>
+          <div className="h-1.5 w-full bg-gray-200 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-yellow-500 rounded-full"
+              style={{ width: `${Math.min(100, extensionProgress)}%` }}
+            />
+          </div>
         </div>
       );
     },
@@ -143,7 +212,10 @@ interface ExportData {
   "Salary (₦)": string;
   "Total Purchasing Unit (₦)": string;
   "Purchasing Unit Remaining (₦)": string;
-  "Purchasing Unit Taken (₦)": string;
+  "Total Borrowed This Month (₦)": string;
+  "Extension Used (₦)": string;
+  "Extension Limit (₦)": string;
+  "Available Credit (₦)": string;
   "Status": string;
 }
 
@@ -208,7 +280,10 @@ export function AdminUsersTable({ initialUsers, token }: AdminUsersTableProps) {
       "Salary (₦)",
       "Total Purchasing Unit (₦)",
       "Purchasing Unit Remaining (₦)",
-      "Purchasing Unit Taken (₦)",
+      "Total Borrowed This Month (₦)",
+      "Extension Used (₦)",
+      "Extension Limit (₦)",
+      "Available Credit (₦)",
       "Status"
     ];
 
@@ -231,10 +306,29 @@ export function AdminUsersTable({ initialUsers, token }: AdminUsersTableProps) {
         style: 'currency',
         currency: 'NGN'
       }).format(parseFloat(user.loan_unit?.toString() || "0")),
-      "Purchasing Unit Taken (₦)": new Intl.NumberFormat('en-NG', {
+      "Total Borrowed This Month (₦)": new Intl.NumberFormat('en-NG', {
         style: 'currency',
         currency: 'NGN'
       }).format(parseFloat(user.loan_amount_collected?.toString() || "0")),
+      "Extension Used (₦)": new Intl.NumberFormat('en-NG', {
+        style: 'currency',
+        currency: 'NGN'
+      }).format(parseFloat(user.loan_extension?.toString() || "0")),
+      "Extension Limit (₦)": new Intl.NumberFormat('en-NG', {
+        style: 'currency',
+        currency: 'NGN'
+      }).format(parseFloat(user.max_extension_limit?.toString() || "0")),
+      "Available Credit (₦)": new Intl.NumberFormat('en-NG', {
+        style: 'currency',
+        currency: 'NGN'
+      }).format(
+        Math.max(
+          0,
+          parseFloat(user.loan_unit?.toString() || "0") +
+          (parseFloat(user.max_extension_limit?.toString() || "0") -
+            parseFloat(user.loan_extension?.toString() || "0"))
+        )
+      ),
       "Status": user.status || "PENDING"
     }));
 

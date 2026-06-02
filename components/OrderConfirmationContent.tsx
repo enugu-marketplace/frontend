@@ -13,10 +13,11 @@ import { CheckCircle, Clock, Truck, HelpCircle, QrCode } from 'lucide-react';
 interface Props {
   order: any; // you can reuse your Order type
   qrCodeUrl: string | null;
+  loanExtension?: number;
   showExport?: boolean; // toggle whether to show export button
 }
 
-export default function OrderConfirmationContent({ order, qrCodeUrl, showExport = true }: Props) {
+export default function OrderConfirmationContent({ order, qrCodeUrl, loanExtension = 0, showExport = true }: Props) {
   const contentRef = useRef<HTMLDivElement>(null);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
 
@@ -98,6 +99,14 @@ export default function OrderConfirmationContent({ order, qrCodeUrl, showExport 
           <p className="text-lg text-gray-600 dark:text-gray-300">
             Thank you for your purchase!
           </p>
+
+          {loanExtension > 0 && (
+            <div className="mt-4 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-left">
+              <p className="text-sm font-semibold text-amber-900">
+                Note: {formatCurrency(loanExtension, order.currency)} of this has been charged against next month&apos;s allocation.
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Order Summary */}

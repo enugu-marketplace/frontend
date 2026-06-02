@@ -28,6 +28,18 @@ interface CartItem {
   };
 }
 
+interface ProfileData {
+  loan_extension?: number;
+  max_extension_limit?: number;
+  loan_unit?: number;
+  salary_per_month?: number;
+}
+
+interface ProfileResponse {
+  message?: string;
+  data?: ProfileData;
+}
+
 const CartPage = () => {
   const { data: clientSession } = useSession();
   const [serverUser, setServerUser] = useState(null);
@@ -69,6 +81,18 @@ const CartPage = () => {
         console.error("Failed to fetch cart:", error);
         throw error;
       }
+    },
+    enabled: !!token,
+  });
+
+  const { data: profileData } = useQuery({
+    queryKey: ["user-profile", token],
+    queryFn: async () => {
+      const res = await axios.get<ProfileResponse>(
+        `${process.env.NEXT_PUBLIC_API_BASE_URL}/user/profile`,
+        { headers }
+      );
+      return res.data?.data || null;
     },
     enabled: !!token,
   });
@@ -244,11 +268,31 @@ const CartPage = () => {
     0
   ) || 0;
 
+  const loanExtension = Number(profileData?.loan_extension || 0);
+  const loanUnit = Number(profileData?.loan_unit || 0);
+  const maxExtensionLimit = Number(profileData?.max_extension_limit || 0);
+  const extensionRemaining = Math.max(0, maxExtensionLimit - loanExtension);
+  const hasSwitchedToExtension = loanUnit <= 0 && extensionRemaining > 0;
+
   if (isLoading) return <div className="container py-8">Loading cart...</div>;
 
   return (
     <div className="container py-8">
       <h1 className="text-3xl font-bold mb-8">Your Cart</h1>
+
+      {hasSwitchedToExtension && (
+        <div className="sticky top-20 z-20 mb-6 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 shadow-sm">
+          <p className="text-sm font-semibold text-amber-900">
+            Warning: You&apos;re currently using your extension credit.
+          </p>
+          <p className="text-sm text-amber-800 mt-1">
+            {new Intl.NumberFormat("en-NG", {
+              style: "currency",
+              currency: "NGN",
+            }).format(loanExtension)} will be deducted from next month&apos;s allocation.
+          </p>
+        </div>
+      )}
 
       {cartItems?.length === 0 ? (
         <div className="text-center py-12">

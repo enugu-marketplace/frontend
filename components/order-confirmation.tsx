@@ -44,6 +44,15 @@ interface Order {
   };
 }
 
+interface ProfileData {
+  loan_extension?: number;
+}
+
+interface ProfileResponse {
+  message?: string;
+  data?: ProfileData;
+}
+
 export default function OrderConfirmationPage() {
   const { data: clientSession, status } = useSession();
   const [serverUser, setServerUser] = useState(null);
@@ -74,6 +83,23 @@ export default function OrderConfirmationPage() {
     },
     staleTime: 1000 * 60 * 5, // 5 minutes
     enabled: !!user?.token
+  });
+
+  const { data: profileData } = useQuery({
+    queryKey: ['user-profile', user?.token],
+    queryFn: async () => {
+      const res = await axios.get<ProfileResponse>(
+        `${process.env.NEXT_PUBLIC_API_BASE_URL}/user/profile`,
+        {
+          headers: {
+            Authorization: `Bearer ${user?.token}`,
+          },
+        }
+      );
+
+      return res.data?.data || null;
+    },
+    enabled: !!user?.token,
   });
 
   // Get the most recent order
@@ -207,7 +233,12 @@ const generateQRCode = async (orderId: string) => {
     <div className="container py-12">
       {/* Export Button */}
       {mostRecentOrder && (
-      <OrderConfirmationContent order={mostRecentOrder} qrCodeUrl={qrCodeUrl} showExport />
+      <OrderConfirmationContent
+        order={mostRecentOrder}
+        qrCodeUrl={qrCodeUrl}
+        loanExtension={Number(profileData?.loan_extension || 0)}
+        showExport
+      />
     )}
     </div>
   );

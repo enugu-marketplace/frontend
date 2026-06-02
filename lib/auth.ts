@@ -693,6 +693,8 @@ export const authOptions: NextAuthOptions = {
             // Add all loan-related fields
             loan_unit: Number(userData.loan_unit ?? 0),
             loan_amount_collected: Number(userData.loan_amount_collected ?? 0),
+            loan_extension: Number(userData.loan_extension ?? 0),
+            max_extension_limit: Number(userData.max_extension_limit ?? 0),
             salary_per_month: Number(userData.salary_per_month ?? 0),
             government_entity: userData.government_entity ?? '',
             phone: userData.phone,
@@ -780,6 +782,14 @@ export const authOptions: NextAuthOptions = {
           if (typeof user.loan_amount_collected !== 'undefined') {
             newToken.loan_amount_collected = Number(user.loan_amount_collected);
           }
+
+          if (typeof user.loan_extension !== 'undefined') {
+            newToken.loan_extension = Number(user.loan_extension);
+          }
+
+          if (typeof user.max_extension_limit !== 'undefined') {
+            newToken.max_extension_limit = Number(user.max_extension_limit);
+          }
           
           if (typeof user.is_address_set !== 'undefined') {
             newToken.is_address_set = Boolean(user.is_address_set);
@@ -856,6 +866,14 @@ export const authOptions: NextAuthOptions = {
         
         if (typeof token.loan_amount_collected !== 'undefined') {
           user.loan_amount_collected = Number(token.loan_amount_collected);
+        }
+
+        if (typeof token.loan_extension !== 'undefined') {
+          user.loan_extension = Number(token.loan_extension);
+        }
+
+        if (typeof token.max_extension_limit !== 'undefined') {
+          user.max_extension_limit = Number(token.max_extension_limit);
         }
         
         if (typeof token.is_address_set !== 'undefined') {
