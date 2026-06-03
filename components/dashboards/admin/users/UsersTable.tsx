@@ -181,7 +181,7 @@ const columns: ColumnDef<UserWithRelations>[] = [
   },
   {
     id: "actions",
-    cell: ({ row }) => {
+    cell: ({ row, table }) => {
       const user = row.original;
       return (
         <div className="flex items-center gap-2">
@@ -190,7 +190,7 @@ const columns: ColumnDef<UserWithRelations>[] = [
               View Details
             </Button>
           </Link>
-          <AddUnitDialog user={user} />
+          {/* <AddUnitDialog user={user} /> */}
         </div>
       );
     },
@@ -391,6 +391,9 @@ export function AdminUsersTable({ initialUsers, token }: AdminUsersTableProps) {
   const table = useReactTable({
     data: filteredUsers,
     columns,
+    meta: {
+      token,
+    },
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     getFilteredRowModel: getFilteredRowModel(),

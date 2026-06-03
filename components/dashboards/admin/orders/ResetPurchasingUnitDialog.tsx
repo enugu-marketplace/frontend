@@ -51,8 +51,38 @@ export function ResetPurchasingUnitDialog({ token }: ResetPurchasingUnitDialogPr
   const nameAliases = new Set(["name"]);
   const phoneAliases = new Set(["phone", "phone_number", "phonenumber"]);
   const governmentEntityAliases = new Set(["government_entity", "governmententity", "entity"]);
-  const employeeIdAliases = new Set(["employee_id", "employeeid"]);
-  const narrationAliases = new Set(["narration", "note", "notes"]);
+  const employeeIdAliases = new Set(["employee_id", "employeeid", "employee", "staff_id", "staffid"]);
+  const narrationAliases = new Set(["narration", "note", "notes", "remark", "remarks"]);
+
+  const isCsvFile = (file: File) => {
+    const fileName = file.name.toLowerCase();
+    const mimeType = (file.type || "").toLowerCase();
+    return (
+      fileName.endsWith(".csv") ||
+      mimeType === "text/csv" ||
+      mimeType === "application/csv"
+    );
+  };
+
+  const isExcelFile = (file: File) => {
+    const fileName = file.name.toLowerCase();
+    const mimeType = (file.type || "").toLowerCase();
+    return (
+      fileName.endsWith(".xlsx") ||
+      fileName.endsWith(".xls") ||
+      mimeType === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ||
+      mimeType === "application/vnd.ms-excel"
+    );
+  };
+
+  const isOdsFile = (file: File) => {
+    const fileName = file.name.toLowerCase();
+    const mimeType = (file.type || "").toLowerCase();
+    return (
+      fileName.endsWith(".ods") ||
+      mimeType === "application/vnd.oasis.opendocument.spreadsheet"
+    );
+  };
 
   const parseCsvLine = (line: string) => {
     const cells: string[] = [];
@@ -87,19 +117,27 @@ export function ResetPurchasingUnitDialog({ token }: ResetPurchasingUnitDialogPr
     return cells;
   };
 
-  const extractRowsFromFile = async (file: File): Promise<string[][]> => {
-    const fileName = file.name.toLowerCase();
+  const normalizeAmountForApi = (value: string) => {
+    const cleaned = String(value ?? "")
+      .replace(/,/g, "")
+      .replace(/\s+/g, "")
+      .replace(/[₦$£€]/g, "")
+      .trim();
 
-    if (fileName.endsWith(".csv")) {
-      const fileText = await file.text();
-      return fileText
-        .split(/\r?\n/)
-        .map((line) => line.trim())
-        .filter(Boolean)
-        .map(parseCsvLine);
+    if (!cleaned) {
+      return null;
     }
 
-    if (fileName.endsWith(".xlsx") || fileName.endsWith(".xls")) {
+    const parsed = Number(cleaned);
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+      return null;
+    }
+
+    return parsed.toString();
+  };
+
+  const extractRowsFromFile = async (file: File): Promise<string[][]> => {
+    const parseSpreadsheetRows = async () => {
       const XLSX = await import("xlsx");
       const workbook = XLSX.read(await file.arrayBuffer(), { type: "array" });
       const firstSheetName = workbook.SheetNames[0];
@@ -118,10 +156,115 @@ export function ResetPurchasingUnitDialog({ token }: ResetPurchasingUnitDialogPr
       return rawRows
         .map((row) => row.map((cell) => String(cell ?? "").trim()))
         .filter((row) => row.some((cell) => cell.length > 0));
+    };
+
+    if (isCsvFile(file) && !file.name.toLowerCase().endsWith(".xlsx") && !file.name.toLowerCase().endsWith(".xls")) {
+      const fileText = await file.text();
+
+      // Auto-detect binary spreadsheet files renamed as CSV and parse them safely.
+      if (fileText.startsWith("PK") || fileText.includes("mimetypeapplication/vnd.oasis.opendocument.spreadsheet")) {
+        return parseSpreadsheetRows();
+      }
+
+      return fileText
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .map(parseCsvLine);
     }
 
-    throw new Error("Unsupported file type. Please upload a CSV or XLSX file.");
+    if (isExcelFile(file) || isOdsFile(file)) {
+      return parseSpreadsheetRows();
+    }
+
+    throw new Error("Unsupported file type. Please upload a CSV, XLSX, XLS, or ODS file.");
   };
+
+  const readErrorMessage = async (response: Response) => {
+    const fallback = `Request failed with status ${response.status}`;
+    const contentType = response.headers.get("content-type") || "";
+
+    if (contentType.includes("application/json")) {
+      const data = await response.json().catch(() => ({}));
+      return data?.message || data?.error || fallback;
+    }
+
+    const text = await response.text().catch(() => "");
+    return text || fallback;
+  };
+
+  const submitBulkRepayments = async (normalizedCsv: string, month: string, originalName: string) => {
+    const normalizedFile = new File(
+      [normalizedCsv],
+      originalName.replace(/\.[^.]+$/, "") + "-normalized.csv",
+      { type: "text/csv" }
+    );
+
+    const attempts: Array<{ label: string; run: () => Promise<Response> }> = [
+      {
+        label: "multipart:file",
+        run: async () => {
+          const formData = new FormData();
+          formData.append("file", normalizedFile);
+          formData.append("month", month);
+
+          return fetch(`${apiBaseUrl}/admin/repayments/confirm-bulk?month=${encodeURIComponent(month)}`, {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${token}`,
+            },
+            body: formData,
+          });
+        },
+      },
+      {
+        label: "multipart:csv",
+        run: async () => {
+          const formData = new FormData();
+          formData.append("csv", normalizedFile);
+          formData.append("month", month);
+
+          return fetch(`${apiBaseUrl}/admin/repayments/confirm-bulk?month=${encodeURIComponent(month)}`, {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${token}`,
+            },
+            body: formData,
+          });
+        },
+      },
+      {
+        label: "raw:text-csv",
+        run: async () => {
+          return fetch(`${apiBaseUrl}/admin/repayments/confirm-bulk?month=${encodeURIComponent(month)}`, {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${token}`,
+              "Content-Type": "text/csv",
+              "Accept": "application/json",
+            },
+            body: normalizedCsv,
+          });
+        },
+      },
+    ];
+
+    const errors: string[] = [];
+
+    for (const attempt of attempts) {
+      const response = await attempt.run();
+      if (response.ok) {
+        const result = await response.json().catch(() => ({}));
+        return { result, attemptLabel: attempt.label };
+      }
+
+      const message = await readErrorMessage(response);
+      errors.push(`${attempt.label}: ${message}`);
+    }
+
+    throw new Error(`Bulk repayment failed. ${errors.join(" | ")}`);
+  };
+
 
   const downloadTemplate = async () => {
     try {
@@ -194,16 +337,37 @@ export function ResetPurchasingUnitDialog({ token }: ResetPurchasingUnitDialogPr
         throw new Error(`File must contain 'verification_id' and 'amount' columns. Found: ${foundColumns}`);
       }
 
-      // Extract rows with required fields
+      // Extract rows with required fields and a numeric amount the API can parse.
       const dataRows = rows.slice(1);
-      const validRows = dataRows.filter((row) => {
-        const verificationId = String(row[verificationIdIndex] ?? "").trim();
-        const amount = String(row[amountIndex] ?? "").trim();
-        return verificationId && amount; // Both fields required
-      });
+      const invalidAmountRows: number[] = [];
+      const validRows = dataRows
+        .map((row, index) => {
+          const verificationId = String(row[verificationIdIndex] ?? "").trim();
+          const normalizedAmount = normalizeAmountForApi(String(row[amountIndex] ?? "").trim());
+
+          if (!verificationId || !normalizedAmount) {
+            if (verificationId && !normalizedAmount) {
+              invalidAmountRows.push(index + 2);
+            }
+            return null;
+          }
+
+          return {
+            row,
+            verificationId,
+            normalizedAmount,
+          };
+        })
+        .filter((entry): entry is { row: string[]; verificationId: string; normalizedAmount: string } => Boolean(entry));
 
       if (validRows.length === 0) {
         throw new Error("No rows with both 'verification_id' and 'amount' fields found in file.");
+      }
+
+      if (invalidAmountRows.length > 0) {
+        const previewRows = invalidAmountRows.slice(0, 10).join(", ");
+        const extraCount = invalidAmountRows.length > 10 ? ` (+${invalidAmountRows.length - 10} more)` : "";
+        throw new Error(`Invalid amount format in row(s): ${previewRows}${extraCount}. Remove symbols and ensure amount is a positive number.`);
       }
 
       const escapeCsv = (value: string) => `"${value.replace(/"/g, '""')}"`;
@@ -216,50 +380,25 @@ export function ResetPurchasingUnitDialog({ token }: ResetPurchasingUnitDialogPr
 
       const normalizedCsv = [
         csvHeaders.join(","),
-        ...validRows.map((row) => {
+        ...validRows.map((entry) => {
           const values = [
-            String(row[verificationIdIndex] ?? "").trim(),
-            String(row[amountIndex] ?? "").trim(),
+            entry.verificationId,
+            entry.normalizedAmount,
           ];
-          if (nameIndex !== -1) values.push(String(row[nameIndex] ?? "").trim());
-          if (phoneIndex !== -1) values.push(String(row[phoneIndex] ?? "").trim());
-          if (governmentEntityIndex !== -1) values.push(String(row[governmentEntityIndex] ?? "").trim());
-          if (employeeIdIndex !== -1) values.push(String(row[employeeIdIndex] ?? "").trim());
-          if (narrationIndex !== -1) values.push(String(row[narrationIndex] ?? "").trim());
+          if (nameIndex !== -1) values.push(String(entry.row[nameIndex] ?? "").trim());
+          if (phoneIndex !== -1) values.push(String(entry.row[phoneIndex] ?? "").trim());
+          if (governmentEntityIndex !== -1) values.push(String(entry.row[governmentEntityIndex] ?? "").trim());
+          if (employeeIdIndex !== -1) values.push(String(entry.row[employeeIdIndex] ?? "").trim());
+          if (narrationIndex !== -1) values.push(String(entry.row[narrationIndex] ?? "").trim());
           return values.map(escapeCsv).join(",");
         }),
       ].join("\n");
 
-      const normalizedFile = new File(
-        [normalizedCsv],
-        selectedFile.name.replace(/\.[^.]+$/, "") + "-normalized.csv",
-        { type: "text/csv" }
+      const { result, attemptLabel } = await submitBulkRepayments(
+        normalizedCsv,
+        selectedMonth,
+        selectedFile.name
       );
-
-      // Prepare FormData for upload
-      const formData = new FormData();
-      formData.append("file", normalizedFile);
-      formData.append("month", selectedMonth);
-
-      const response = await fetch(
-        `${apiBaseUrl}/admin/repayments/confirm-bulk`,
-        {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${token}`,
-          },
-          body: formData,
-        }
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(
-          errorData.message || "Failed to confirm bulk repayments. Please try again."
-        );
-      }
-
-   const result = await response.json();
 
       setIsOpen(false);
       setSelectedFile(null);
@@ -268,7 +407,7 @@ export function ResetPurchasingUnitDialog({ token }: ResetPurchasingUnitDialogPr
       }
 
       toast.success(
-        `Successfully processed ${result.updatedCount || result.successCount || result.processedCount || validRows.length} repayment record(s) for ${selectedMonth}.`
+        `Successfully processed ${result.updatedCount || result.successCount || result.processedCount || validRows.length} repayment record(s) for ${selectedMonth} (${attemptLabel}).`
       );
     } catch (error) {
       console.error("Reset error:", error);
@@ -282,14 +421,10 @@ export function ResetPurchasingUnitDialog({ token }: ResetPurchasingUnitDialogPr
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      const fileName = file.name.toLowerCase();
-      const isCsvOrExcel =
-        fileName.endsWith(".csv") ||
-        fileName.endsWith(".xlsx") ||
-        fileName.endsWith(".xls");
+      const isCsvOrExcel = isCsvFile(file) || isExcelFile(file) || isOdsFile(file);
 
       if (!isCsvOrExcel) {
-        toast.error("Please select a CSV or XLSX file.");
+        toast.error("Please select a CSV, XLSX, XLS, or ODS file.");
         if (fileInputRef.current) {
           fileInputRef.current.value = "";
         }
@@ -328,12 +463,12 @@ export function ResetPurchasingUnitDialog({ token }: ResetPurchasingUnitDialogPr
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="reset-file">Upload file (CSV or XLSX)</Label>
+              <Label htmlFor="reset-file">Upload file (CSV, XLSX, XLS, or ODS)</Label>
               <Input
                 id="reset-file"
                 ref={fileInputRef}
                 type="file"
-                accept=".csv,.xlsx,.xls"
+                accept=".csv,.xlsx,.xls,.ods"
                 onChange={handleFileChange}
                 disabled={isResetting}
               />
