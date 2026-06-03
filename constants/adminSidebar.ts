@@ -22,9 +22,9 @@ export const AdminSideBar: AdminSideBarType[] = [
       { path: "consent", name: "Consents", icon: LuHandshake },
     { path: "orders", name: "Orders", icon: FiShoppingBag  },
      { path: "agents", name: "Fulfillment Agents", icon: MdSupportAgent  },
-    { path: "inventory", name: "Inventory", icon: MdOutlineInventory2 },
-    { path: "warehouse", name: "Warehouse", icon: PiWarehouse },
-    { path: "categories", name: "Categories", icon: BiCategoryAlt},
+    // { path: "inventory", name: "Inventory", icon: MdOutlineInventory2 },
+    // { path: "warehouse", name: "Warehouse", icon: PiWarehouse },
+    // { path: "categories", name: "Categories", icon: BiCategoryAlt},
    
    
   ];

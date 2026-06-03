@@ -147,7 +147,7 @@ export function UserDetails({ userData, token }: UserDetailsProps) {
                 token={token} 
                 onSuccess={refetch} 
               />
-              <AddUnitDialog user={displayUser} triggerLabel="Add Unit" />
+              {/* <AddUnitDialog user={displayUser} triggerLabel="Add Unit" /> */}
               <Button 
                 variant="outline" 
                 size="sm" 
