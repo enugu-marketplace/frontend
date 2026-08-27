@@ -1,36 +1,49 @@
 "use client";
-import React from "react";
-import Link from "next/link";
-import { CommonDashboardContext } from "@/providers/StateContext";
-import { useContext } from "react";
-import { UserSideBar, UserSideBarType } from "@/constants/userSidebar";
 
+import Link from "next/link";
+import { useContext } from "react";
+import { HugeiconsIcon } from "@hugeicons/react";
+
+import { CommonDashboardContext } from "@/providers/StateContext";
+import { UserSideBar, UserSideBarType } from "@/constants/userSidebar";
+import { cn } from "@/lib/utils";
 
 interface Isidebar {
   findpath: string;
 }
 
-
 export const UserSideBarComponent = ({ findpath }: Isidebar) => {
-  const {  setShowSideBar } = useContext(CommonDashboardContext);
+  const { setShowSidebar } = useContext(CommonDashboardContext);
+
   return (
-    <div className=" flex flex-col space-y-2 ">
-      {UserSideBar.map((item: UserSideBarType, index) => (
-       <Link
-       onClick={() => setShowSideBar(false)}
-       href={`/employee-dashboard/${item.path}`}
-       className={`flex items-center gap-3 px-3 py-2 rounded-md transition-all duration-200 text-sm ${
-         findpath === item.path
-           ? "bg-green-700 text-white font-semibold"
-           : "text-[#000] hover:text-black font-medium hover:bg-white/10"
-       }`}
-       key={index}
-     >
-       <div className="text-lg">{item.icon && <item.icon />}</div>
-       <p>{item.name}</p>
-     </Link>
-     
-      ))}
-    </div>
+    <nav className="flex flex-col gap-0.5">
+      {UserSideBar.map((item: UserSideBarType) => {
+        const active = findpath === item.path;
+
+        return (
+          <Link
+            key={item.path || "overview"}
+            href={`/employee-dashboard/${item.path}`}
+            onClick={() => setShowSidebar(false)}
+            className={cn(
+              "flex items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-colors",
+              active
+                ? "bg-brand-50 font-medium text-brand-800"
+                : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+            )}
+          >
+            {item.icon && (
+              <HugeiconsIcon
+                icon={item.icon}
+                size={18}
+                strokeWidth={active ? 2 : 1.8}
+                className={active ? "text-brand-700" : "text-slate-400"}
+              />
+            )}
+            {item.name}
+          </Link>
+        );
+      })}
+    </nav>
   );
 };

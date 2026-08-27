@@ -3,9 +3,6 @@ import { authOptions } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import axios from 'axios';
 import OrdersTable from '@/components/dashboards/admin/orders/OrdersTable';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import Link from 'next/link';
 import { ExportExternalOrdersDialog } from '@/components/dashboards/admin/users/ExportExternalOrders';
 import { ResetPurchasingUnitDialog } from '@/components/dashboards/admin/orders/ResetPurchasingUnitDialog';
 
@@ -21,33 +18,65 @@ export default async function OrdersPage() {
   }
 
   let orders = [];
+  let users: Array<{
+    id: string;
+    firstname?: string;
+    lastname?: string;
+  }> = [];
   try {
-    const response = await axios.get(`${process.env.NEXT_PUBLIC_API_BASE_URL}/admin/all-order`, {
-      headers: { Authorization: `Bearer ${session.user.token}` }
-    });
-    orders = response.data.data || [];
+    const [ordersResponse, usersResponse] = await Promise.all([
+      axios.get(`${process.env.NEXT_PUBLIC_API_BASE_URL}/admin/all-order`, {
+        headers: { Authorization: `Bearer ${session.user.token}` }
+      }),
+      axios.get(`${process.env.NEXT_PUBLIC_API_BASE_URL}/admin/users`, {
+        headers: { Authorization: `Bearer ${session.user.token}` }
+      }),
+    ]);
+
+    orders = ordersResponse.data.data || [];
+    users = usersResponse.data.data || [];
   } catch (error) {
     console.error('Failed to fetch orders:', error);
   }
 
+  const usersById = new Map(users.map((user) => [user.id, user]));
+  const ordersWithUserNames = orders.map((order: any) => {
+    if (order.user?.firstname || order.user?.lastname) {
+      return order;
+    }
+
+    const matchedUser = usersById.get(order.userId);
+    if (!matchedUser) {
+      return order;
+    }
+
+    return {
+      ...order,
+      user: {
+        ...order.user,
+        firstname: matchedUser.firstname || '',
+        lastname: matchedUser.lastname || '',
+      },
+    };
+  });
+
   return (
-    <div className="p-4 space-y-6 mt-[60px]">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Orders Management</h1>
-        <div className="flex gap-2">
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-semibold text-slate-900">Orders</h1>
+          <p className="mt-1 text-sm text-slate-600">
+            Every order placed under the scheme, with delivery and payment status.
+          </p>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
           <ExportExternalOrdersDialog token={session.user.token} />
           <ResetPurchasingUnitDialog token={session.user.token} />
         </div>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>All Orders</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <OrdersTable orders={orders} />
-        </CardContent>
-      </Card>
+      <OrdersTable orders={ordersWithUserNames} />
     </div>
   );
 }

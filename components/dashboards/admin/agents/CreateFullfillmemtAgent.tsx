@@ -82,7 +82,7 @@ export function CreateFulfillmentOfficerDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="bg-green-700 hover:bg-green-600">
+        <Button className="bg-brand-700 hover:bg-brand-800">
           Create Fulfillment Officer
         </Button>
       </DialogTrigger>
@@ -153,7 +153,7 @@ export function CreateFulfillmentOfficerDialog({
             <Button 
               type="submit" 
               disabled={loading } // Disable if no token
-              className="bg-green-700 hover:bg-reen-600"
+              className="bg-brand-700 hover:bg-brand-800"
             >
               {loading ? 'Creating...' : 'Create Officer'}
             </Button>

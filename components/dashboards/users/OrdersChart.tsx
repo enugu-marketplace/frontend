@@ -1,6 +1,7 @@
 "use client";
 
-import { TrendingUp } from "lucide-react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { ChartLineData01Icon } from "@hugeicons/core-free-icons";
 import { Area, AreaChart, CartesianGrid, XAxis } from "recharts";
 import {
   Card,
@@ -124,7 +125,7 @@ export function OrdersChart() {
   }
 
   return (
-    <Card className="mb-6 md:w-1/2 w-full">
+    <Card className="w-full rounded-none border-slate-200 shadow-none">
       <CardHeader>
         <CardTitle className="text-[18px]">Order Activity</CardTitle>
         <CardDescription className="text-[14px]">
@@ -132,7 +133,7 @@ export function OrdersChart() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <ChartContainer config={chartConfig}>
+        <ChartContainer config={chartConfig} className="h-[320px] w-full">
           <AreaChart
             accessibilityLayer
             data={data}
@@ -199,7 +200,7 @@ export function OrdersChart() {
           <div className="grid gap-2">
             <div className="flex items-center gap-2 font-medium leading-none">
               Your order trends
-              <TrendingUp className="h-4 w-4" />
+              <HugeiconsIcon icon={ChartLineData01Icon} size={15} strokeWidth={1.8} />
             </div>
             <p className="text-xs text-muted-foreground">
               {data?.reduce((sum, month) => sum + month.completed, 0)} completed

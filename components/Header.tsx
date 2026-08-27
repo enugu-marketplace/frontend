@@ -1,331 +1,245 @@
-'use client';
-import { useEffect, useState } from "react";
-import { X, ShoppingCart, Utensils, Search, User, LogOut } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useSession } from "next-auth/react";
-import ShowProfile from "./ShowProfile";
-import { HiOutlineMenuAlt4 } from "react-icons/hi";
-import { useQuery } from "@tanstack/react-query";
-import axios from "axios";
-import Image from "next/image";
-import { cn } from "@/lib/utils";
-import { FiShoppingBag } from "react-icons/fi";
+"use client";
 
-const navLinks = [
-  { name: "About Us", href: "/about" },
-  // { name: "How It Works", href: "/how-it-works" },
-  // { name: "Contact", href: "/contact" },
+import { useEffect, useState, FormEvent } from "react";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import {
+  Search01Icon,
+  ShoppingCart01Icon,
+  Menu01Icon,
+  Cancel01Icon,
+  LogInIcon,
+  Call02Icon,
+  Shield01Icon,
+  Leaf01Icon,
+  PackageIcon,
+  Store01Icon,
+} from "@hugeicons/core-free-icons";
+
+import { Button } from "@/components/ui/button";
+import ShowProfile from "./ShowProfile";
+import Logo from "@/components/brand/Logo";
+import { cn } from "@/lib/utils";
+import { useCartCount } from "@/hooks/useCartCount";
+
+const primaryNav = [
+  { name: "All products", href: "/", icon: Store01Icon },
+  { name: "Fresh produce", href: "/?type=perishable", icon: Leaf01Icon },
+  { name: "Pantry staples", href: "/?type=non-perishable", icon: PackageIcon },
 ];
 
-function CartPreview({ token }: { token?: string }) {
-  const { data: cartResponse, error } = useQuery({
-    queryKey: ['cart', token],
-    queryFn: async () => {
-      if (!token) {
-        return { data: [] };
-      }
-      
-      try {
-        const res = await axios.get(`${process.env.NEXT_PUBLIC_API_BASE_URL}/user/cart`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        return res.data;
-      } catch (error) {
-        console.error('Cart fetch error:', error);
-        return { data: [] };
-      }
-    },
-    enabled: !!token,
-    refetchInterval: 5000,
-    refetchOnWindowFocus: true
-  });
+const secondaryNav = [
+  { name: "About the scheme", href: "/about" },
+  { name: "Benefits", href: "/benefits" },
+];
 
-  const itemCount = cartResponse?.data?.reduce((sum: number, item: { quantity: number }) => sum + item.quantity, 0) || 0;
+function CartButton({ token }: { token?: string }) {
+  const count = useCartCount(token);
 
   return (
-    <div className="relative">
-      <Link href="/employee-dashboard/cart">
-        <Button variant="ghost" size="icon" className="hover:bg-orange-100/50 rounded-full relative transition-colors">
-          <ShoppingCart className="h-5 w-5" />
-          {itemCount > 0 && (
-            <span className="absolute -top-1 -right-1 bg-orange-600 text-white rounded-full h-5 w-5 flex items-center justify-center text-xs font-medium">
-              {itemCount}
-            </span>
-          )}
-        </Button>
-      </Link>
-      {error && (
-        <span className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full h-5 w-5 flex items-center justify-center text-xs">
-          !
-        </span>
-      )}
-    </div>
+    <Link
+      href="/employee-dashboard/cart"
+      className="flex items-center gap-2 rounded-md px-2.5 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 sm:px-3"
+    >
+      <span className="relative">
+        <HugeiconsIcon icon={ShoppingCart01Icon} size={21} strokeWidth={1.8} />
+        {count > 0 && (
+          <span className="absolute -right-2 -top-1.5 min-w-4 rounded-sm bg-brand-700 px-1 text-center text-[10px] font-bold leading-4 text-white">
+            {count > 99 ? "99+" : count}
+          </span>
+        )}
+      </span>
+      <span className="hidden sm:inline">Cart</span>
+    </Link>
   );
 }
 
 const Header = () => {
-  const [menu, setMenu] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [term, setTerm] = useState("");
   const { data: clientSession, status } = useSession();
-  const [serverUser, setServerUser] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [serverUser, setServerUser] = useState<any>(null);
   const pathname = usePathname();
-  const isAuthPage = pathname === "/register" || pathname === "/employee-login";
-
-  const toggleMenu = () => setMenu(!menu);
-  const closeMenu = () => setMenu(false);
-
-  useEffect(() => {
-    const handleScroll = () => {
-      const isScrolled = window.scrollY > 10;
-      setScrolled(isScrolled);
-    };
-
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+  const router = useRouter();
 
   useEffect(() => {
     fetch("/api/auth/session")
       .then(async (res) => {
-        if (!res.ok) {
-          throw new Error(`Session fetch failed: ${res.status}`);
-        }
-
-        // NextAuth may return 204 No Content if no session
-        if (res.status === 204) {
-          return null;
-        }
-
+        if (!res.ok) throw new Error(`Session fetch failed: ${res.status}`);
+        if (res.status === 204) return null;
         try {
           return await res.json();
         } catch {
           return null;
         }
       })
-      .then((data) => {
-        setServerUser(data);
-        setIsLoading(false);
-      })
-      .catch((err) => {
-        console.error("Session error:", err);
-        setIsLoading(false);
-      });
+      .then(setServerUser)
+      .catch((err) => console.error("Session error:", err));
   }, []);
 
-  const user = clientSession?.user || serverUser;
+  // close the drawer when the route changes
+  useEffect(() => setMenuOpen(false), [pathname]);
+
+  const user = clientSession?.user || serverUser?.user || serverUser;
+
+  function search(e: FormEvent) {
+    e.preventDefault();
+    const q = term.trim();
+    router.push(q ? `/?q=${encodeURIComponent(q)}` : "/");
+  }
 
   return (
-    <header className={cn(
-      "font-header h-20 bg-white/90 backdrop-blur-md sticky top-0 text-black font-semibold z-50 w-full transition-all duration-300 border-b",
-      scrolled ? "shadow-md" : "shadow-sm"
-    )}>
-      {/* DESKTOP */}
-      <div className="hidden w-full h-full sm:flex justify-between items-center px-6 lg:px-8 max-w-7xl mx-auto">
-        <div className="flex items-center">
-          <Link href="/" className="flex items-center space-x-2 group">
-            <div className="relative w-12 h-12 rounded-lg  z-50 flex items-center justify-center transition-colors">
-              <Image
-                src={"/logo2.png"}
-                alt="logo"
-                width={50}
-                height={50}
-                className="text-[40px] w-[50px] z-50 text-green-700"
-              />
-            </div>
-            <div className="flex flex-col">
-              <h1 className="text-xl font-bold text-gray-900 leading-tight">
-                Enugu Market
-              </h1>
-              <span className="text-sm font-medium text-green-700">
-                Food Scheme
-              </span>
-            </div>
+    <header className="font-header sticky top-0 z-50 w-full bg-white">
+      <div className="hidden bg-brand-900 text-[12px] text-brand-100 md:block">
+        <div className="mx-auto flex h-8 max-w-[1400px] items-center justify-between px-4 lg:px-6">
+          <span className="flex items-center gap-1.5">
+            <HugeiconsIcon icon={Shield01Icon} size={14} strokeWidth={2} />
+            Official Enugu State Government food scheme
+          </span>
+          <span className="flex items-center gap-4">
+            <Link href="/about" className="hover:underline">
+              Help centre
+            </Link>
+            <span className="flex items-center gap-1.5">
+              <HugeiconsIcon icon={Call02Icon} size={14} strokeWidth={2} />
+              0800 3684 8
+            </span>
+          </span>
+        </div>
+      </div>
+
+      <div className="border-b border-slate-200">
+        <div className="mx-auto flex h-16 max-w-[1400px] items-center gap-3 px-4 lg:gap-6 lg:px-6">
+          <button
+            type="button"
+            onClick={() => setMenuOpen((open) => !open)}
+            className="-ml-1 rounded-md p-2 text-slate-700 hover:bg-slate-100 lg:hidden"
+            aria-label="Menu"
+          >
+            <HugeiconsIcon icon={menuOpen ? Cancel01Icon : Menu01Icon} size={22} strokeWidth={1.8} />
+          </button>
+
+          <Link href="/" className="shrink-0">
+            <Logo idSuffix="header" markClassName="h-9 w-9" />
           </Link>
+
+          <form onSubmit={search} className="hidden flex-1 md:block">
+            <div className="flex h-10 max-w-2xl overflow-hidden rounded-md border border-slate-300 focus-within:border-brand-600">
+              <input
+                value={term}
+                onChange={(e) => setTerm(e.target.value)}
+                placeholder="Search for rice, beans, oil"
+                className="w-full px-3 text-sm text-slate-800 outline-none placeholder:text-slate-400"
+              />
+              <button
+                type="submit"
+                className="flex items-center gap-1.5 bg-brand-700 px-5 text-sm font-medium text-white hover:bg-brand-800"
+              >
+                <HugeiconsIcon icon={Search01Icon} size={17} strokeWidth={2} />
+                <span className="hidden lg:inline">Search</span>
+              </button>
+            </div>
+          </form>
+
+          <div className="ml-auto flex items-center gap-1 sm:gap-2">
+            {status === "authenticated" && user ? (
+              <>
+                {user?.role === "user" && <CartButton token={user?.token} />}
+                <ShowProfile />
+              </>
+            ) : (
+              <>
+                <Link
+                  href="/employee-login"
+                  className="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+                >
+                  <HugeiconsIcon icon={LogInIcon} size={19} strokeWidth={1.8} />
+                  <span className="hidden sm:inline">Sign in</span>
+                </Link>
+                <Button
+                  asChild
+                  className="hidden h-10 rounded-md bg-brand-700 px-4 text-sm font-medium hover:bg-brand-800 sm:inline-flex"
+                >
+                  <Link href="/employee-login">Get started</Link>
+                </Button>
+              </>
+            )}
+          </div>
         </div>
 
-        <div className="flex items-center gap-8 h-full">
-          <nav className="flex gap-8 font-medium text-gray-700">
-            {navLinks.map((link) => (
+        <form onSubmit={search} className="px-4 pb-3 md:hidden">
+          <div className="flex h-10 overflow-hidden rounded-md border border-slate-300 focus-within:border-brand-600">
+            <input
+              value={term}
+              onChange={(e) => setTerm(e.target.value)}
+              placeholder="Search products"
+              className="w-full px-3 text-sm outline-none placeholder:text-slate-400"
+            />
+            <button type="submit" className="bg-brand-700 px-4 text-white" aria-label="Search">
+              <HugeiconsIcon icon={Search01Icon} size={17} strokeWidth={2} />
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <nav className="hidden border-b border-slate-200 bg-slate-50 lg:block">
+        <div className="mx-auto flex h-11 max-w-[1400px] items-center gap-1 px-4 text-sm lg:px-6">
+          {primaryNav.map((item) => (
+            <Link
+              key={item.name}
+              href={item.href}
+              className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-slate-700 hover:bg-slate-200/70"
+            >
+              <HugeiconsIcon icon={item.icon} size={17} strokeWidth={1.8} />
+              {item.name}
+            </Link>
+          ))}
+
+          <span className="mx-2 h-5 w-px bg-slate-300" />
+
+          {secondaryNav.map((item) => (
+            <Link
+              key={item.name}
+              href={item.href}
+              className={cn(
+                "rounded-md px-3 py-1.5 hover:bg-slate-200/70",
+                pathname.startsWith(item.href) ? "font-medium text-brand-800" : "text-slate-700"
+              )}
+            >
+              {item.name}
+            </Link>
+          ))}
+
+          <span className="ml-auto text-[13px] text-slate-500">
+            Deductions capped at 1/3 of salary. 0% interest.
+          </span>
+        </div>
+      </nav>
+
+      {menuOpen && (
+        <div className="border-b border-slate-200 bg-white lg:hidden">
+          <nav className="px-4 py-3">
+            {[...primaryNav, ...secondaryNav].map((item) => (
               <Link
-                href={link.href}
-                key={link.name}
-                className={cn(
-                  "relative py-1 transition-colors text-[15px] hover:text-green-600",
-                  pathname.startsWith(link.href) 
-                    ? "text-green-600 font-semibold" 
-                    : "text-gray-700"
-                )}
+                key={item.name}
+                href={item.href}
+                className="block border-b border-slate-100 py-3 text-sm text-slate-700 last:border-0"
               >
-                {link.name}
-                {pathname.startsWith(link.href) && (
-                  <span className="absolute bottom-0 left-0 w-full h-0.5  rounded-full"></span>
-                )}
+                {item.name}
               </Link>
             ))}
-            {user && (
+
+            {status !== "authenticated" && (
               <Link
-                href="#"
-                className={cn(
-                  "relative py-1 transition-colors text-[15px] hover:text-green-600 flex items-center gap-1",
-                  pathname.startsWith("/employee-dashboard/products") 
-                    ? "text-green-600 font-semibold" 
-                    : "text-gray-700"
-                )}
+                href="/employee-login"
+                className="mt-3 block rounded-md bg-brand-700 py-2.5 text-center text-sm font-medium text-white"
               >
-                <FiShoppingBag className="h-4 w-4" />
-                Products
-                {pathname.startsWith("/employee-dashboard/products") && (
-                  <span className="absolute bottom-0 left-0 w-full h-0.5 bg-green-600 rounded-full"></span>
-                )}
+                Sign in
               </Link>
             )}
           </nav>
-          
-          <div className="flex items-center gap-4">
-            {status === "authenticated" && user && (
-              <>
-                {user?.role === "user" && <CartPreview token={user?.token} />}
-                
-                <div className="h-6 w-px bg-gray-300"></div>
-                
-                <div className="flex items-center gap-2">
-                  <ShowProfile />
-                </div>
-              </>
-            )}
-
-            {status === "unauthenticated" && (
-              <div className="flex items-center gap-3">
-                <Button
-                  asChild
-                  variant="ghost"
-                  className="rounded-md text-gray-700 hover:text-orange-600 hover:bg-orange-50"
-                >
-                  <Link href="/employee-login">Sign In</Link>
-                </Button>
-                <Button
-                  asChild
-                  className="rounded-md bg-orange-600 hover:bg-orange-700 p-[1.7rem] text-white"
-                >
-                  <Link href="/employee-login">Get Started</Link>
-                </Button>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* MOBILE */}
-      <div className="sm:hidden w-full h-full px-4 flex justify-between items-center">
-        <Link href="/" className="flex items-center space-x-2">
-          
-            <Image
-              src={"/logo.png"}
-              alt="logo"
-              width={50}
-              height={50}
-              className="w-[60px] z-50 "
-            />
-       
-          <div className="flex flex-col">
-            <h1 className="text-lg font-bold text-gray-900 leading-tight">
-              Enugu Market
-            </h1>
-            <span className="text-xs font-medium text-green-700">
-              Food Scheme
-            </span>
-          </div>
-        </Link>
-
-        <div className="flex items-center gap-3">
-          {status === "authenticated" && user?.role === "user" && (
-            <CartPreview token={user?.token} />
-          )}
-          
-          <button 
-            onClick={toggleMenu} 
-            className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
-          >
-            {menu ? (
-              <X className="text-gray-700 w-6 h-6" />
-            ) : (
-              <HiOutlineMenuAlt4 className="text-gray-700 w-6 h-6" />
-            )}
-          </button>
-        </div>
-      </div>
-
-      {/* Mobile Menu */}
-      {menu && (
-        <div className="sm:hidden absolute top-full left-0 w-full bg-white border-t shadow-lg animate-in slide-in-from-top">
-          <div className="px-4 py-6">
-            <nav className="flex flex-col gap-4">
-              {navLinks.map((link) => (
-                <Link
-                  key={link.name}
-                  href={link.href}
-                  onClick={closeMenu}
-                  className={cn(
-                    "py-3 px-4 rounded-lg transition-colors",
-                    pathname.startsWith(link.href)
-                      ? "bg-orange-50 text-orange-600 font-semibold"
-                      : "text-gray-700 hover:bg-gray-50"
-                  )}
-                >
-                  {link.name}
-                </Link>
-              ))}
-              {user && (
-                <Link
-                  href="#"
-                  onClick={closeMenu}
-                  className={cn(
-                    "py-3 px-4 rounded-lg transition-colors flex items-center gap-2",
-                    pathname.startsWith("/employee-dashboard/products")
-                      ? "bg-orange-50 text-orange-600 font-semibold"
-                      : "text-gray-700 hover:bg-gray-50"
-                  )}
-                >
-                  <Utensils className="h-4 w-4" />
-                  Products
-                </Link>
-              )}
-            </nav>
-
-            <div className="mt-6 pt-6 border-t border-gray-200">
-              {status === "authenticated" && user ? (
-                <div className="flex flex-col gap-4">
-                  <div className="flex items-center justify-between px-4 py-3 bg-gray-50 rounded-lg">
-                    
-                    <ShowProfile />
-                  </div>
-                </div>
-              ) : (
-                <div className="flex flex-col gap-3">
-                  <Button
-                    asChild
-                    variant="outline"
-                    className="w-full justify-center py-3 border-gray-300"
-                  >
-                    <Link href="/employee-login" onClick={closeMenu}>
-                      Sign In
-                    </Link>
-                  </Button>
-                  <Button
-                    asChild
-                    className="w-full justify-center py-3 bg-orange-600 hover:bg-orange-700"
-                  >
-                    <Link href="/employee-login" onClick={closeMenu}>
-                      Get Started
-                    </Link>
-                  </Button>
-                </div>
-              )}
-            </div>
-          </div>
         </div>
       )}
     </header>

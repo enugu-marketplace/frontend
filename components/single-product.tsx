@@ -15,15 +15,22 @@ import {
 import Image from "next/image";
 import { toast } from "sonner";
 import { useEffect, useState } from "react";
+import Link from "next/link";
+import { HugeiconsIcon } from "@hugeicons/react";
 import {
-  Heart,
-  HeartOff,
-  AlertCircle,
-  Info,
-  ShoppingCart,
-  Upload,
-  Star,
-} from "lucide-react";
+  FavouriteIcon,
+  Alert01Icon,
+  InformationCircleIcon,
+  ShoppingCart01Icon,
+  ShoppingBasket01Icon,
+  Upload01Icon,
+  MinusSignIcon,
+  PlusSignIcon,
+  ArrowLeft01Icon,
+  Leaf01Icon,
+  PackageIcon,
+} from "@hugeicons/core-free-icons";
+import { cn } from "@/lib/utils";
 import {
   Tooltip,
   TooltipContent,
@@ -239,6 +246,7 @@ export default function ProductDetailPage({
       );
 
       if (response.status === 200 || response.status === 201) {
+        await queryClient.invalidateQueries({ queryKey: ["cart"] });
         const decision = await evaluateCartExtensionDecision(user.token);
 
         if (decision?.insufficientCredit) {
@@ -359,20 +367,6 @@ export default function ProductDetailPage({
   const decrementQuantity = () =>
     setQuantity((prev) => (prev > 1 ? prev - 1 : 1));
 
-  const renderStars = (rating: number) => {
-    return Array(5)
-      .fill(0)
-      .map((_, i) => (
-        <Star
-          key={i}
-          size={16}
-          className={
-            i < rating ? "fill-yellow-400 text-yellow-400" : "text-gray-300"
-          }
-        />
-      ));
-  };
-
   const formatCurrency = (amount: number) =>
     new Intl.NumberFormat("en-NG", {
       style: "currency",
@@ -405,247 +399,223 @@ export default function ProductDetailPage({
     }
   };
 
-  if (status === "loading" || isComplianceLoading)
-    return <div className="container py-8">Loading...</div>;
+  if (status === "loading" || isComplianceLoading) {
+    return (
+      <div className="grid gap-6 lg:grid-cols-2">
+        <div className="aspect-square w-full animate-pulse border border-slate-200 bg-slate-100" />
+        <div className="space-y-3">
+          <div className="h-6 w-2/3 animate-pulse rounded bg-slate-100" />
+          <div className="h-4 w-full animate-pulse rounded bg-slate-100" />
+          <div className="h-4 w-4/5 animate-pulse rounded bg-slate-100" />
+          <div className="h-8 w-32 animate-pulse rounded bg-slate-100" />
+          <div className="h-11 w-full animate-pulse rounded bg-slate-100" />
+        </div>
+      </div>
+    );
+  }
+
+  const complianceBlocked = !isCartActionAllowed() || isAdmin;
 
   return (
-    <div className="container py-8">
-      <TooltipProvider>
-        {/* Admin notice banner */}
-        {isAdmin && (
-          <div className="bg-purple-100 border-l-4 border-purple-500 text-purple-700 p-4 mb-6 rounded">
-            <div className="flex items-center">
-              <Info className="h-5 w-5 mr-2" />
-              <p>Admin view: Cart and wishlist features are disabled.</p>
-            </div>
-          </div>
-        )}
+    <div className="space-y-5">
+      <TooltipProvider delayDuration={200}>
+        <Link
+          href="/employee-dashboard/products"
+          className="inline-flex items-center gap-1.5 text-[13px] text-slate-500 hover:text-brand-700"
+        >
+          <HugeiconsIcon icon={ArrowLeft01Icon} size={15} strokeWidth={2} />
+          Back to products
+        </Link>
 
-        {/* Compliance Status Banners */}
-        {!isAdmin && user && (!complianceData || complianceData?.is_compliance_submitted === false) && (
-          <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-6 rounded">
-            <div className="flex items-center">
-              <AlertCircle className="h-5 w-5 mr-2" />
-              <p>Please submit your compliance form to add items to cart.</p>
-              <Button
+        {/* Role and compliance notices */}
+        <div className="space-y-2">
+          {isAdmin && (
+            <p className="flex items-center gap-2 border-l-4 border-violet-500 bg-violet-50 px-3 py-2.5 text-sm text-violet-900">
+              <HugeiconsIcon icon={InformationCircleIcon} size={17} strokeWidth={1.8} />
+              Admin view. Cart and wishlist are disabled.
+            </p>
+          )}
+
+          {!isAdmin && user && (!complianceData || complianceData?.is_compliance_submitted === false) && (
+            <div className="flex flex-wrap items-center gap-3 border-l-4 border-amber-500 bg-amber-50 px-3 py-2.5 text-sm text-amber-900">
+              <HugeiconsIcon icon={Alert01Icon} size={17} strokeWidth={1.8} />
+              Submit your compliance form before you can add items to your cart.
+              <button
                 onClick={() => setShowComplianceDialog(true)}
-                className="ml-4 bg-yellow-600 hover:bg-yellow-700"
-                size="sm"
+                className="ml-auto flex items-center gap-1.5 rounded-sm bg-amber-600 px-3 py-1.5 text-[13px] font-medium text-white hover:bg-amber-700"
               >
-                <Upload className="h-4 w-4 mr-2" />
-                Submit Compliance
-              </Button>
+                <HugeiconsIcon icon={Upload01Icon} size={15} strokeWidth={1.8} />
+                Submit form
+              </button>
             </div>
-          </div>
-        )}
+          )}
 
-        {!isAdmin && user && complianceData?.status === "PENDING" && (
-          <div className="bg-blue-100 border-l-4 border-blue-500 text-blue-700 p-4 mb-6 rounded">
-            <div className="flex items-center">
-              <AlertCircle className="h-5 w-5 mr-2" />
-              <p>
-                Your compliance form is pending admin approval. You cannot add
-                items until approved.
-              </p>
+          {!isAdmin && user && complianceData?.status === "PENDING" && (
+            <p className="flex items-center gap-2 border-l-4 border-sky-500 bg-sky-50 px-3 py-2.5 text-sm text-sky-900">
+              <HugeiconsIcon icon={Alert01Icon} size={17} strokeWidth={1.8} />
+              Your compliance form is awaiting approval. You can browse, but not order yet.
+            </p>
+          )}
+
+          {!isAdmin && user && complianceData?.status === "DENIED" && (
+            <div className="flex flex-wrap items-center gap-3 border-l-4 border-red-500 bg-red-50 px-3 py-2.5 text-sm text-red-900">
+              <HugeiconsIcon icon={Alert01Icon} size={17} strokeWidth={1.8} />
+              Your compliance form was rejected. Please submit a new one.
+              <button
+                onClick={() => setShowComplianceDialog(true)}
+                className="ml-auto flex items-center gap-1.5 rounded-sm bg-red-600 px-3 py-1.5 text-[13px] font-medium text-white hover:bg-red-700"
+              >
+                <HugeiconsIcon icon={Upload01Icon} size={15} strokeWidth={1.8} />
+                Submit new form
+              </button>
             </div>
-          </div>
-        )}
+          )}
+        </div>
 
-        {!isAdmin && user && complianceData?.status === "DENIED" && (
-          <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded">
-            <div className="flex items-center">
-              <AlertCircle className="h-5 w-5 mr-2" />
-              <div>
-                <p className="font-semibold">Compliance Form Rejected</p>
-                <p>Your compliance form was rejected. Please submit a new one.</p>
-                <Button
-                  onClick={() => setShowComplianceDialog(true)}
-                  className="mt-2 bg-red-600 hover:bg-red-700"
-                  size="sm"
-                >
-                  <Upload className="h-4 w-4 mr-2" />
-                  Submit New Compliance
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <div className="relative">
-            <div className="relative h-96 w-full rounded-lg overflow-hidden">
+        <div className="grid gap-6 lg:grid-cols-2">
+          <div className="relative aspect-square w-full border border-slate-200 bg-white">
+            {product?.product_image ? (
               <Image
-                src={product?.product_image || "/placeholder-product.jpg"}
+                src={product.product_image}
                 alt={product?.name || "Product image"}
                 fill
-                className="object-contain"
+                sizes="(max-width: 1024px) 100vw, 50vw"
+                className="object-contain p-6"
                 priority
               />
-              {product?.active && (
-                <div className="absolute top-3 left-3 bg-green-100 text-green-800 text-xs px-2 py-1 rounded">
-                  In Stock
-                </div>
-              )}
-            </div>
+            ) : (
+              <span className="flex h-full w-full items-center justify-center bg-slate-50 text-slate-300">
+                <HugeiconsIcon icon={ShoppingBasket01Icon} size={44} strokeWidth={1.2} />
+              </span>
+            )}
+
+            {product?.active && (
+              <span className="absolute left-3 top-3 rounded-sm bg-brand-50 px-2 py-1 text-[11px] font-medium text-brand-800 ring-1 ring-brand-200">
+                In stock
+              </span>
+            )}
           </div>
 
           <div>
-            <h1 className="text-3xl font-bold mb-2">{product?.name}</h1>
+            <h1 className="text-2xl font-semibold text-slate-900">{product?.name}</h1>
 
-            <div className="flex items-center mb-3">
-              <div className="flex mr-1">
-                {renderStars(product?.rating || 5)}
-              </div>
-              <span className="text-xs text-gray-600">
-                ({product?.reviewCount || 2})
-              </span>
-            </div>
+            <p className="mt-2 flex items-center gap-1.5 text-[13px] text-slate-500">
+              <HugeiconsIcon
+                icon={product?.isPerishable ? Leaf01Icon : PackageIcon}
+                size={14}
+                strokeWidth={1.8}
+              />
+              {product?.isPerishable ? "Fresh produce" : "Pantry staple"}
+            </p>
 
-            <p className="text-gray-600 mb-6">{product?.description}</p>
+            <p className="mt-4 text-3xl font-semibold text-slate-900">
+              {new Intl.NumberFormat("en-NG", {
+                style: "currency",
+                currency: product?.currency || "NGN",
+                maximumFractionDigits: 0,
+              }).format(product?.basePrice || 0)}
+            </p>
 
-            <div className="mb-6">
-              <span
-                className={`text-sm px-3 py-1 rounded ${
-                  product?.isPerishable
-                    ? "bg-green-100 text-green-800"
-                    : "bg-blue-100 text-blue-800"
-                }`}
-              >
-                {product?.isPerishable ? "Perishable" : "Non-Perishable"}
-              </span>
-            </div>
+            {product?.description && (
+              <p className="mt-4 text-sm leading-6 text-slate-600">{product.description}</p>
+            )}
 
-            <div className="mb-6">
-              <h2 className="text-xl font-semibold mb-2">Price</h2>
-              <p className="text-2xl font-bold">
-                {new Intl.NumberFormat("en-NG", {
-                  style: "currency",
-                  currency: product?.currency || "NGN",
-                }).format(product?.basePrice || 0)}
-              </p>
-            </div>
-
-            <div className="mb-6">
-              <h2 className="text-xl font-semibold mb-4">Quantity</h2>
-              <div className="flex items-center gap-4">
-                <Button
-                  variant="outline"
-                  size="icon"
+            <div className="mt-6 border-t border-slate-200 pt-5">
+              <p className="text-[13px] font-medium text-slate-700">Quantity</p>
+              <div className="mt-2 flex h-10 w-fit items-center rounded-sm border border-slate-300">
+                <button
                   onClick={decrementQuantity}
+                  className="flex h-full w-10 items-center justify-center text-slate-600 hover:bg-slate-50"
+                  aria-label="Decrease quantity"
                 >
-                  -
-                </Button>
-                <span className="text-lg font-medium">{quantity}</span>
-                <Button
-                  variant="outline"
-                  size="icon"
+                  <HugeiconsIcon icon={MinusSignIcon} size={15} strokeWidth={2} />
+                </button>
+                <span className="flex h-full w-12 items-center justify-center border-x border-slate-300 text-sm font-medium">
+                  {quantity}
+                </span>
+                <button
                   onClick={incrementQuantity}
+                  className="flex h-full w-10 items-center justify-center text-slate-600 hover:bg-slate-50"
+                  aria-label="Increase quantity"
                 >
-                  +
-                </Button>
+                  <HugeiconsIcon icon={PlusSignIcon} size={15} strokeWidth={2} />
+                </button>
               </div>
             </div>
 
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div className="w-full">
-                  <Button
-                    size="lg"
-                    className="w-full bg-green-700 hover:bg-green-600 text-white"
-                    onClick={handleAddToCart}
-                    disabled={
-                      isAddingToCart || !isCartActionAllowed() || isAdmin
-                    }
-                  >
-                    {isAddingToCart ? (
-                      <>
-                        <span className="animate-spin mr-2">⏳</span>
-                        Adding...
-                      </>
-                    ) : (
-                      <>
-                        <ShoppingCart className="mr-2 h-4 w-4" />
-                        Add to Cart
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </TooltipTrigger>
-              {(!isCartActionAllowed() || isAdmin) && (
-                <TooltipContent side="top" className="max-w-xs">
-                  <div className="flex items-center">
-                    <Info className="h-4 w-4 mr-2 text-yellow-500" />
-                    <p>{getComplianceStatusMessage()}</p>
+            <div className="mt-5 flex flex-col gap-2 sm:flex-row">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="flex-1">
+                    <button
+                      onClick={handleAddToCart}
+                      disabled={isAddingToCart || complianceBlocked}
+                      className="flex h-11 w-full items-center justify-center gap-2 rounded-sm bg-brand-700 text-sm font-medium text-white hover:bg-brand-800 disabled:bg-slate-200 disabled:text-slate-500"
+                    >
+                      <HugeiconsIcon icon={ShoppingCart01Icon} size={17} strokeWidth={1.8} />
+                      {isAddingToCart ? "Adding..." : "Add to cart"}
+                    </button>
                   </div>
-                </TooltipContent>
-              )}
-            </Tooltip>
+                </TooltipTrigger>
+                {complianceBlocked && (
+                  <TooltipContent side="top" className="max-w-xs">
+                    {getComplianceStatusMessage()}
+                  </TooltipContent>
+                )}
+              </Tooltip>
 
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div className="w-full mt-3">
-                  <Button
-                    variant="outline"
-                    className="w-full"
-                    onClick={toggleWishlist}
-                    disabled={!isCartActionAllowed() || isAdmin}
-                  >
-                    {isInWishlist ? (
-                      <>
-                        <HeartOff className="mr-2 h-4 w-4" />
-                        Remove from Wishlist
-                      </>
-                    ) : (
-                      <>
-                        <Heart className="mr-2 h-4 w-4" />
-                        Add to Wishlist
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </TooltipTrigger>
-              {(!isCartActionAllowed() || isAdmin) && (
-                <TooltipContent side="top" className="max-w-xs">
-                  <div className="flex items-center">
-                    <Info className="h-4 w-4 mr-2 text-yellow-500" />
-                    <p>{getComplianceStatusMessage()}</p>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="sm:w-44">
+                    <button
+                      onClick={toggleWishlist}
+                      disabled={complianceBlocked}
+                      className={cn(
+                        "flex h-11 w-full items-center justify-center gap-2 rounded-sm border text-sm font-medium disabled:border-slate-200 disabled:text-slate-400",
+                        isInWishlist
+                          ? "border-brand-600 text-brand-700"
+                          : "border-slate-300 text-slate-700 hover:border-brand-600 hover:text-brand-700"
+                      )}
+                    >
+                      <HugeiconsIcon icon={FavouriteIcon} size={17} strokeWidth={1.8} />
+                      {isInWishlist ? "Saved" : "Save"}
+                    </button>
                   </div>
-                </TooltipContent>
-              )}
-            </Tooltip>
+                </TooltipTrigger>
+                {complianceBlocked && (
+                  <TooltipContent side="top" className="max-w-xs">
+                    {getComplianceStatusMessage()}
+                  </TooltipContent>
+                )}
+              </Tooltip>
+            </div>
 
-            {(!isCartActionAllowed() || isAdmin) && user && (
-              <div className="mt-4 p-3 bg-gray-50 rounded-lg border">
-                <h3 className="font-semibold text-sm mb-2 flex items-center">
-                  <Info className="h-4 w-4 mr-2 text-blue-500" />
-                  {isAdmin ? "Admin Status" : "Compliance Status"}
-                </h3>
-                <ul className="text-sm text-gray-600 space-y-1">
+            {complianceBlocked && user && (
+              <div className="mt-5 border border-slate-200 bg-white p-4">
+                <p className="text-[13px] font-medium text-slate-800">
+                  {isAdmin ? "Admin account" : "Compliance status"}
+                </p>
+                <ul className="mt-2 space-y-1 text-[13px] text-slate-600">
                   {isAdmin ? (
-                    <li>• Admin users cannot add items to cart or wishlist</li>
+                    <li>Admin users cannot add items to cart or wishlist.</li>
                   ) : (
                     <>
-                      <li>
-                        • Compliance Submitted: {complianceData ? "Yes" : "No"}
-                      </li>
+                      <li>Form submitted: {complianceData ? "Yes" : "No"}</li>
                       {complianceData && (
-                        <li>
-                          • Approval Status:{" "}
-                          {complianceData.status || "Checking..."}
-                        </li>
+                        <li>Approval status: {complianceData.status || "Checking..."}</li>
                       )}
                     </>
                   )}
                 </ul>
+
                 {!isAdmin && complianceData?.status === "DENIED" && (
-                  <Button
+                  <button
                     onClick={() => setShowComplianceDialog(true)}
-                    className="mt-2 w-full"
-                    variant="destructive"
+                    className="mt-3 flex h-9 w-full items-center justify-center gap-1.5 rounded-sm bg-red-600 text-[13px] font-medium text-white hover:bg-red-700"
                   >
-                    <Upload className="h-4 w-4 mr-2" />
-                    Submit New Compliance
-                  </Button>
+                    <HugeiconsIcon icon={Upload01Icon} size={15} strokeWidth={1.8} />
+                    Submit new form
+                  </button>
                 )}
               </div>
             )}
@@ -671,25 +641,44 @@ export default function ProductDetailPage({
         >
           <DialogContent className="sm:max-w-[560px]">
             <DialogHeader>
-              <DialogTitle className="text-xl">Use Extension Buffer To Complete This Purchase?</DialogTitle>
+              <DialogTitle>Use your extension buffer?</DialogTitle>
               <DialogDescription>
-                Your purchasing unit cannot fully cover this cart total. Continue with extension buffer (10% of salary)?
+                Your purchasing unit does not cover this cart total. You can continue using the
+                extension buffer (10% of salary).
               </DialogDescription>
             </DialogHeader>
 
-            <div className="space-y-3 rounded-lg border bg-amber-50 p-4">
-              <p className="text-sm text-amber-900"><span className="font-semibold">Purchasing unit remaining:</span> {formatCurrency(extensionConfirm.loanUnit)}</p>
-              <p className="text-sm text-amber-900"><span className="font-semibold">Extension buffer available:</span> {formatCurrency(extensionConfirm.extensionRemaining)}</p>
-              <p className="text-sm text-amber-900"><span className="font-semibold">Current cart total:</span> {formatCurrency(extensionConfirm.cartTotal)}</p>
-              <p className="text-sm text-amber-800">If you continue, the extension amount used will be deducted from your next salary cycle.</p>
-            </div>
+            <dl className="space-y-1.5 border-l-4 border-amber-500 bg-amber-50 p-4 text-sm text-amber-900">
+              <div className="flex justify-between gap-4">
+                <dt>Purchasing unit left</dt>
+                <dd className="font-medium">{formatCurrency(extensionConfirm.loanUnit)}</dd>
+              </div>
+              <div className="flex justify-between gap-4">
+                <dt>Extension buffer</dt>
+                <dd className="font-medium">{formatCurrency(extensionConfirm.extensionRemaining)}</dd>
+              </div>
+              <div className="flex justify-between gap-4">
+                <dt>Cart total</dt>
+                <dd className="font-medium">{formatCurrency(extensionConfirm.cartTotal)}</dd>
+              </div>
+              <p className="pt-1 text-[13px]">
+                Anything taken from the buffer is deducted from your next salary cycle.
+              </p>
+            </dl>
 
             <DialogFooter>
-              <Button variant="outline" onClick={handleCancelExtensionUsage} disabled={isRevertingCartItem}>
-                {isRevertingCartItem ? "Removing item..." : "Cancel And Remove Item"}
+              <Button
+                variant="outline"
+                onClick={handleCancelExtensionUsage}
+                disabled={isRevertingCartItem}
+              >
+                {isRevertingCartItem ? "Removing item..." : "Cancel and remove item"}
               </Button>
-              <Button className="bg-orange-700 hover:bg-orange-600" onClick={handleContinueWithExtension}>
-                Continue To Cart
+              <Button
+                className="bg-brand-700 hover:bg-brand-800"
+                onClick={handleContinueWithExtension}
+              >
+                Continue to cart
               </Button>
             </DialogFooter>
           </DialogContent>

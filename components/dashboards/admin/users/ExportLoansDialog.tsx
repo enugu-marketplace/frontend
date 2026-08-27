@@ -9,7 +9,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Download } from "lucide-react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { Download01Icon } from "@hugeicons/core-free-icons";
 
 interface ExportLoansDialogProps {
   token: string;
@@ -70,8 +71,8 @@ export function ExportLoansDialog({ token }: ExportLoansDialogProps) {
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" className="flex font-header bg-green-700 hover:bg-green-600 text-white items-center gap-2">
-          <Download className="h-4 w-4" />
+        <Button variant="outline" className="flex font-header bg-brand-700 hover:bg-brand-800 text-white items-center gap-2">
+          <HugeiconsIcon icon={Download01Icon} size={16} strokeWidth={1.8} />
           Export Orders
         </Button>
       </DialogTrigger>

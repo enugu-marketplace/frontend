@@ -1,46 +1,41 @@
 "use client";
+
 import { Session } from "next-auth";
-import ConfirmLogout from "@/components/ConfirmLogout";
 import { ToastContainer } from "react-toastify";
-//import "react-toastify/dist/ReactToastify.css";
+import "react-toastify/dist/ReactToastify.css";
+
+import ConfirmLogout from "@/components/ConfirmLogout";
 import MobileSideBar from "@/components/dashboards/admin/sidebar/MobileSidebar";
-import MobileNavbar from "@/components/dashboards/admin/navbar/MobileNavbar";
+import AdminTopbar from "@/components/dashboards/admin/navbar/MobileNavbar";
 import Sidebar from "@/components/dashboards/admin/sidebar/Sidebar";
 
-export default function   AdminLayoutClient({
+export default function AdminLayoutClient({
   children,
-  session
+  session,
 }: {
   children: React.ReactNode;
   session: Session;
 }) {
+  const user = { name: session?.user?.name, email: session?.user?.email };
+
   return (
-    <div className="flex font-header">
-      {/* Desktop Sidebar */}
-      <div className="hidden sm:block sm:flex-4 md:flex-2 bg-[#FFF] text-black font-semibold py-2 h-screen sticky top-0 overflow-auto scrollbar-hide">
-        <Sidebar dashboard="super_admin"  />
-        
-      </div>
+    <div className="font-header flex min-h-screen bg-slate-50">
+      {/* Desktop sidebar lives in the layout, so it stays mounted between pages */}
+      <aside className="sticky top-0 hidden h-screen w-64 shrink-0 border-r border-slate-200 bg-white lg:block">
+        <Sidebar dashboard="super_admin" user={user} />
+      </aside>
 
-      {/* Main Content */}
-      <section className="flex-1 flex flex-col w-full overflow-hidden">
-        {/* Mobile Sidebar */}
-        <div className="sm:hidden">
-          <MobileSideBar dashboard="super_admin" session={session}  />
-        </div>
+      <MobileSideBar dashboard="super_admin" session={session} />
 
-        {/* Navbar */}
-        <div className="sticky top-0 z-20 bg-white shadow-sm">
-          {/* <Navbar /> */}
-          <MobileNavbar />
-        </div>
+      <div className="flex min-w-0 flex-1 flex-col">
+        <AdminTopbar user={user} />
 
-        <main className="flex-1 overflow-y-auto p-4 md:p-1 scrollbar-hide bg-stone-100 relative">
+        <main className="flex-1 px-4 py-5 lg:px-6">
           <ConfirmLogout />
-          {children}
+          <div className="mx-auto w-full max-w-7xl">{children}</div>
           <ToastContainer position="top-right" autoClose={3000} />
         </main>
-      </section>
+      </div>
     </div>
   );
 }

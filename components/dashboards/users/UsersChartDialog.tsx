@@ -63,7 +63,7 @@ export const LargeSkeleton = () => {
   return (
     <Skeleton
       className="w-full rounded-lg"
-      height={350}
+      height={340}
       variant="rectangular"
       animation="wave"
     />
@@ -192,7 +192,7 @@ export default function OrderActivityChart() {
   };
 
   return (
-    <Card className="md:w-[80%] w-full h-full px-3 py-4">
+    <Card className="w-full rounded-none border-slate-200 px-4 py-4 shadow-none">
       <div className="mx-auto">
         <h2 className="text-[18px] font-medium mb-4">
           Your Order Activity Last Week

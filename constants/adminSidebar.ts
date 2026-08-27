@@ -1,30 +1,28 @@
-import { IconType } from "react-icons";
-import { RiHome5Line } from "react-icons/ri";
-import { LuHandshake, LuUsers } from "react-icons/lu";
-import { PiWarehouse } from "react-icons/pi";
-import { BiCategoryAlt } from "react-icons/bi";
-import { MdOutlineInventory2, MdOutlineProductionQuantityLimits, MdSupportAgent } from "react-icons/md";
-import { FiShoppingBag } from "react-icons/fi";
-import { BsCart4 } from "react-icons/bs";
-
+import type { IconSvgElement } from "@hugeicons/react";
+import {
+  DashboardSquare01Icon,
+  UserMultipleIcon,
+  ShoppingBasket01Icon,
+  Agreement01Icon,
+  ShoppingBag01Icon,
+  CustomerService01Icon,
+  WarehouseIcon,
+  Layers01Icon,
+} from "@hugeicons/core-free-icons";
 
 export interface AdminSideBarType {
-    path: string;
-    icon?: IconType;
-    name: string;
-  }
-
+  path: string;
+  icon?: IconSvgElement;
+  name: string;
+}
 
 export const AdminSideBar: AdminSideBarType[] = [
-    { path: "", name: "Dashboard", icon: RiHome5Line },
-    { path: "users", name: "Users", icon: LuUsers },
-    { path: "products", name: "Products", icon: MdOutlineProductionQuantityLimits },
-      { path: "consent", name: "Consents", icon: LuHandshake },
-    { path: "orders", name: "Orders", icon: FiShoppingBag  },
-     { path: "agents", name: "Fulfillment Agents", icon: MdSupportAgent  },
-    // { path: "inventory", name: "Inventory", icon: MdOutlineInventory2 },
-    // { path: "warehouse", name: "Warehouse", icon: PiWarehouse },
-    // { path: "categories", name: "Categories", icon: BiCategoryAlt},
-   
-   
-  ];
+  { path: "", name: "Overview", icon: DashboardSquare01Icon },
+  { path: "users", name: "Users", icon: UserMultipleIcon },
+  { path: "products", name: "Products", icon: ShoppingBasket01Icon },
+  { path: "consent", name: "Consents", icon: Agreement01Icon },
+  { path: "orders", name: "Orders", icon: ShoppingBag01Icon },
+  { path: "agents", name: "Fulfillment agents", icon: CustomerService01Icon },
+  // { path: "inventory", name: "Inventory", icon: Layers01Icon },
+  // { path: "warehouse", name: "Warehouse", icon: WarehouseIcon },
+];

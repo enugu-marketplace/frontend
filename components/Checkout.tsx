@@ -5,11 +5,18 @@ import { useEffect, useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
 import Image from 'next/image';
 import Link from 'next/link';
+import { HugeiconsIcon } from '@hugeicons/react';
+import {
+  Alert01Icon,
+  Location01Icon,
+  ShoppingCart01Icon,
+  ShoppingBasket01Icon,
+  Loading03Icon,
+  HelpCircleIcon,
+  Wallet01Icon,
+} from '@hugeicons/core-free-icons';
 
 interface CartItem {
   id: string;
@@ -224,24 +231,29 @@ export default function CheckoutPage() {
   // Redirect if not authenticated
   useEffect(() => {
     if (status === 'unauthenticated') {
-      router.push(`/employee-login?returnUrl=${encodeURIComponent('/checkout')}`);
+      router.push(`/employee-login?returnUrl=${encodeURIComponent('/employee-dashboard/checkout')}`);
     }
   }, [status, router]);
+
+  const money = (value: number) =>
+    new Intl.NumberFormat('en-NG', {
+      style: 'currency',
+      currency: 'NGN',
+      maximumFractionDigits: 0,
+    }).format(value || 0);
 
   // Show loading state
   if (status === 'loading' || isCartLoading || isProfileLoading) {
     return (
-      <div className="container py-8">
-        <Skeleton className="h-8 w-48 mb-6" />
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2 space-y-4">
+      <div className="space-y-5">
+        <div className="h-6 w-40 animate-pulse rounded bg-slate-100" />
+        <div className="grid gap-5 lg:grid-cols-3">
+          <div className="space-y-4 lg:col-span-2">
             {[...Array(3)].map((_, i) => (
-              <Skeleton key={i} className="h-32 w-full" />
+              <div key={i} className="h-28 w-full animate-pulse border border-slate-200 bg-slate-50" />
             ))}
           </div>
-          <div className="space-y-4">
-            <Skeleton className="h-96 w-full" />
-          </div>
+          <div className="h-96 w-full animate-pulse border border-slate-200 bg-slate-50" />
         </div>
       </div>
     );
@@ -250,557 +262,322 @@ export default function CheckoutPage() {
   // Show compliance error
   if (profileError) {
     return (
-      <div className="container py-8">
-        <div className="max-w-2xl mx-auto">
-          <Card className="border-red-200">
-            <CardContent className="p-6">
-              <div className="flex flex-col items-center text-center space-y-4">
-                <div className="h-16 w-16 rounded-full bg-red-100 flex items-center justify-center">
-                  <svg 
-                    xmlns="http://www.w3.org/2000/svg" 
-                    className="h-8 w-8 text-red-600" 
-                    fill="none" 
-                    viewBox="0 0 24 24" 
-                    stroke="currentColor"
-                  >
-                    <path 
-                      strokeLinecap="round" 
-                      strokeLinejoin="round" 
-                      strokeWidth={2} 
-                      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.998-.833-2.732 0L4.103 16.5c-.77.833.192 2.5 1.732 2.5z" 
-                    />
-                  </svg>
-                </div>
-                <div>
-                  <h2 className="text-xl font-bold text-gray-900">Unable to Load Credit Information</h2>
-                  <p className="text-gray-600 mt-2">
-                    We couldn't retrieve your purchasing limit. Please try refreshing the page or contact support.
-                  </p>
-                </div>
-                <div className="flex gap-3">
-                  <Button onClick={() => window.location.reload()}>
-                    Refresh Page
-                  </Button>
-                  <Button variant="outline" asChild>
-                    <Link href="/employee-dashboard/help">
-                      Contact Support
-                    </Link>
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+      <div className="mx-auto max-w-md border border-slate-200 bg-white px-6 py-12 text-center">
+        <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-50 text-red-600">
+          <HugeiconsIcon icon={Alert01Icon} size={24} strokeWidth={1.8} />
+        </span>
+        <p className="mt-3 text-sm font-medium text-slate-800">
+          We could not load your purchasing limit
+        </p>
+        <p className="mt-1 text-[13px] text-slate-500">
+          Refresh the page, or call the support line if it keeps happening.
+        </p>
+        <div className="mt-4 flex justify-center gap-2">
+          <button
+            onClick={() => window.location.reload()}
+            className="h-9 rounded-sm bg-brand-700 px-4 text-[13px] font-medium text-white hover:bg-brand-800"
+          >
+            Refresh
+          </button>
+          <Link
+            href="/employee-dashboard"
+            className="flex h-9 items-center rounded-sm border border-slate-300 px-4 text-[13px] font-medium text-slate-700 hover:bg-slate-50"
+          >
+            Back to dashboard
+          </Link>
         </div>
       </div>
     );
   }
 
   if (!user) {
-    return <div className="container py-8">Redirecting to login...</div>;
+    return (
+      <p className="py-10 text-center text-sm text-slate-500">Taking you to sign in...</p>
+    );
   }
 
   // Show compliance not submitted warning
   if (!isComplianceSubmitted) {
     return (
-      <div className="container py-8">
-        <div className="max-w-2xl mx-auto">
-          <Card className="border-yellow-200">
-            <CardContent className="p-6">
-              <div className="flex flex-col items-center text-center space-y-4">
-                <div className="h-16 w-16 rounded-full bg-yellow-100 flex items-center justify-center">
-                  <svg 
-                    xmlns="http://www.w3.org/2000/svg" 
-                    className="h-8 w-8 text-yellow-600" 
-                    fill="none" 
-                    viewBox="0 0 24 24" 
-                    stroke="currentColor"
-                  >
-                    <path 
-                      strokeLinecap="round" 
-                      strokeLinejoin="round" 
-                      strokeWidth={2} 
-                      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.998-.833-2.732 0L4.103 16.5c-.77.833.192 2.5 1.732 2.5z" 
-                    />
-                  </svg>
-                </div>
-                <div>
-                  <h2 className="text-xl font-bold text-gray-900">Compliance Required</h2>
-                  <p className="text-gray-600 mt-2">
-                    You need to complete your compliance form before you can make purchases. 
-                    This is required to determine your purchasing limit.
-                  </p>
-                </div>
-                <div className="flex gap-3">
-                  <Button asChild>
-                    <Link href="/employee-dashboard/compliance">
-                      Complete Compliance Form
-                    </Link>
-                  </Button>
-                  <Button variant="outline" asChild>
-                    <Link href="/employee-dashboard">
-                      Back to Dashboard
-                    </Link>
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+      <div className="mx-auto max-w-md border border-slate-200 bg-white px-6 py-12 text-center">
+        <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-amber-50 text-amber-600">
+          <HugeiconsIcon icon={Alert01Icon} size={24} strokeWidth={1.8} />
+        </span>
+        <p className="mt-3 text-sm font-medium text-slate-800">Compliance form required</p>
+        <p className="mt-1 text-[13px] text-slate-500">
+          Your purchasing limit is set once your compliance form is approved. You can submit it
+          from your dashboard.
+        </p>
+        <div className="mt-4 flex justify-center gap-2">
+          <Link
+            href="/employee-dashboard"
+            className="flex h-9 items-center rounded-sm bg-brand-700 px-4 text-[13px] font-medium text-white hover:bg-brand-800"
+          >
+            Go to dashboard
+          </Link>
+          <Link
+            href="/employee-dashboard/cart"
+            className="flex h-9 items-center rounded-sm border border-slate-300 px-4 text-[13px] font-medium text-slate-700 hover:bg-slate-50"
+          >
+            Back to cart
+          </Link>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="container py-8">
-      <h1 className="text-3xl font-bold mb-8">Checkout</h1>
-      
-      {/* Sticky extension warning */}
-      {isUsingExtension && (
-        <div className="sticky top-20 z-20 mb-6 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 shadow-sm">
-          <p className="text-sm font-semibold text-amber-900">
-            Warning: You&apos;re currently using your extension credit.
-          </p>
-          <p className="text-sm text-amber-800 mt-1">
-            {new Intl.NumberFormat('en-NG', {
-              style: 'currency',
-              currency: 'NGN',
-            }).format(loanExtension)} will be deducted from next month&apos;s allocation.
-          </p>
-        </div>
-      )}
+    <div className="space-y-5">
+      <div>
+        <h1 className="text-xl font-semibold text-slate-900">Checkout</h1>
+        <p className="mt-1 text-sm text-slate-600">
+          Confirm your items and place the order against your purchasing unit.
+        </p>
+      </div>
 
-      {/* Credit Limit Banner */}
-      {(loanUnit > 0 || maxExtensionLimit > 0) && (
-        <div className="mb-6 p-4 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center">
-                <svg 
-                  xmlns="http://www.w3.org/2000/svg" 
-                  className="h-5 w-5 text-green-600" 
-                  fill="none" 
-                  viewBox="0 0 24 24" 
-                  stroke="currentColor"
-                >
-                  <path 
-                    strokeLinecap="round" 
-                    strokeLinejoin="round" 
-                    strokeWidth={2} 
-                    d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" 
-                  />
-                </svg>
-              </div>
-              <div>
-                <h3 className="font-medium text-green-800">Purchasing Credit</h3>
-                <p className="text-sm text-green-600">
-                  Real-time credit balance: {new Intl.NumberFormat('en-NG', {
-                    style: 'currency',
-                    currency: 'NGN',
-                  }).format(availableCredit)} available
-                </p>
-              </div>
-            </div>
-            <div className="text-right">
-              <p className="text-sm font-medium text-green-800">
-                Updated just now
-              </p>
-              <button 
-                onClick={() => queryClient.invalidateQueries({ queryKey: ['user-profile'] })}
-                className="text-xs text-green-600 hover:text-green-800 underline"
-              >
-                Refresh
-              </button>
-            </div>
+      {isUsingExtension && (
+        <div className="flex items-start gap-2.5 border-l-4 border-amber-500 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          <HugeiconsIcon
+            icon={Alert01Icon}
+            size={18}
+            strokeWidth={1.8}
+            className="mt-0.5 shrink-0 text-amber-600"
+          />
+          <div>
+            <p className="font-medium">You are spending from your extension credit.</p>
+            <p className="mt-0.5 text-amber-800">
+              {money(loanExtension)} will be deducted from next month&apos;s allocation.
+            </p>
           </div>
         </div>
       )}
-      
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 space-y-6">
-          {/* Order Summary Section */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Order Details</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="p-4 bg-blue-50 rounded-lg border border-blue-100">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
-                    <svg 
-                      xmlns="http://www.w3.org/2000/svg" 
-                      className="h-4 w-4 text-blue-600" 
-                      fill="none" 
-                      viewBox="0 0 24 24" 
-                      stroke="currentColor"
-                    >
-                      <path 
-                        strokeLinecap="round" 
-                        strokeLinejoin="round" 
-                        strokeWidth={2} 
-                        d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" 
-                      />
-                      <path 
-                        strokeLinecap="round" 
-                        strokeLinejoin="round" 
-                        strokeWidth={2} 
-                        d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" 
-                      />
-                    </svg>
-                  </div>
-                  <h3 className="font-medium">Delivery Information</h3>
-                </div>
-                <p className="text-sm text-gray-600">
-                  Orders will be delivered to your registered office address. For delivery inquiries, 
-                  please contact the fulfillment office.
+
+      <div className="grid gap-5 lg:grid-cols-3">
+        <div className="space-y-4 lg:col-span-2">
+          {/* Delivery */}
+          <div className="border border-slate-200 bg-white">
+            <p className="border-b border-slate-200 px-4 py-3 text-[13px] font-semibold uppercase tracking-wide text-slate-600">
+              Delivery
+            </p>
+            <div className="flex gap-3 p-4">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-slate-100 text-slate-600">
+                <HugeiconsIcon icon={Location01Icon} size={19} strokeWidth={1.8} />
+              </span>
+              <div className="text-[13px] leading-6 text-slate-600">
+                <p>
+                  Orders are delivered to your registered office address. For delivery questions,
+                  contact the fulfillment office.
                 </p>
                 {governmentEntity && (
-                  <p className="text-sm font-medium text-blue-800 mt-2">
-                    Delivery to: {governmentEntity}
+                  <p className="mt-1 font-medium text-slate-900">Delivering to: {governmentEntity}</p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Items */}
+          <div className="border border-slate-200 bg-white">
+            <p className="border-b border-slate-200 px-4 py-3 text-[13px] font-semibold uppercase tracking-wide text-slate-600">
+              Items ({cartItems?.reduce((sum, item) => sum + item.quantity, 0) || 0})
+            </p>
+
+            {cartItems && cartItems.length > 0 ? (
+              <div className="divide-y divide-slate-100">
+                {cartItems.map((item) => (
+                  <div key={item.id} className="flex gap-4 p-4">
+                    <div className="relative h-16 w-16 shrink-0 border border-slate-100">
+                      {item.product.product_image ? (
+                        <Image
+                          src={item.product.product_image}
+                          alt={item.product.name}
+                          fill
+                          sizes="64px"
+                          className="object-contain p-1.5"
+                        />
+                      ) : (
+                        <span className="flex h-full w-full items-center justify-center bg-slate-50 text-slate-300">
+                          <HugeiconsIcon icon={ShoppingBasket01Icon} size={22} strokeWidth={1.3} />
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-slate-900">{item.product.name}</p>
+                      <p className="mt-0.5 text-[12px] text-slate-500">
+                        {item.quantity} × {money(item.product.basePrice)}
+                        <span className="mx-1.5" aria-hidden>·</span>
+                        {item.product.isPerishable ? 'Fresh' : 'Pantry'}
+                      </p>
+                    </div>
+
+                    <p className="shrink-0 text-sm font-semibold text-slate-900">
+                      {money(item.product.basePrice * item.quantity)}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="px-6 py-12 text-center">
+                <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-400">
+                  <HugeiconsIcon icon={ShoppingCart01Icon} size={24} strokeWidth={1.5} />
+                </span>
+                <p className="mt-3 text-sm font-medium text-slate-800">Your cart is empty</p>
+                <Link
+                  href="/employee-dashboard/products"
+                  className="mt-4 inline-block h-9 rounded-sm bg-brand-700 px-4 text-[13px] font-medium leading-9 text-white hover:bg-brand-800"
+                >
+                  Browse products
+                </Link>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Summary */}
+        <div>
+          <div className="sticky top-20 space-y-4">
+            <div className="border border-slate-200 bg-white">
+              <p className="border-b border-slate-200 px-4 py-3 text-[13px] font-semibold uppercase tracking-wide text-slate-600">
+                Order summary
+              </p>
+
+              <div className="space-y-4 p-4">
+                <dl className="space-y-2 text-sm">
+                  <div className="flex justify-between gap-3">
+                    <dt className="text-slate-600">Items</dt>
+                    <dd className="font-medium text-slate-900">{money(subtotal)}</dd>
+                  </div>
+                </dl>
+
+                {/* Credit position */}
+                <div className="space-y-3 border-y border-slate-200 py-4">
+                  <div className="flex items-center gap-2">
+                    <HugeiconsIcon
+                      icon={Wallet01Icon}
+                      size={16}
+                      strokeWidth={1.8}
+                      className="text-brand-700"
+                    />
+                    <p className="text-[13px] font-medium text-slate-800">Your credit</p>
+                    <button
+                      onClick={() => queryClient.invalidateQueries({ queryKey: ['user-profile'] })}
+                      className="ml-auto text-[12px] text-brand-700 hover:underline"
+                    >
+                      Refresh
+                    </button>
+                  </div>
+
+                  <div>
+                    <div className="flex justify-between text-[12px] text-slate-600">
+                      <span>Purchasing unit</span>
+                      <span>
+                        {money(loanUnit)} of {money(totalPurchasingUnit)}
+                      </span>
+                    </div>
+                    <div className="mt-1.5 h-1.5 w-full rounded-full bg-slate-100">
+                      <div
+                        className={`h-full rounded-full ${loanUnit <= 0 ? 'bg-red-500' : 'bg-brand-600'}`}
+                        style={{ width: `${purchasingUnitProgress}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="flex justify-between text-[12px] text-slate-600">
+                      <span>Extension buffer</span>
+                      <span>
+                        {money(extensionRemaining)} of {money(maxExtensionLimit)}
+                      </span>
+                    </div>
+                    <div className="mt-1.5 h-1.5 w-full rounded-full bg-slate-100">
+                      <div
+                        className="h-full rounded-full bg-amber-500"
+                        style={{ width: `${extensionProgress}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex justify-between text-[13px]">
+                    <span className="text-slate-600">Available to spend</span>
+                    <span className="font-medium text-brand-800">{money(availableCredit)}</span>
+                  </div>
+                </div>
+
+                <dl className="space-y-2">
+                  <div className="flex justify-between gap-3 text-base">
+                    <dt className="font-medium text-slate-900">Total</dt>
+                    <dd className="font-semibold text-slate-900">{money(total)}</dd>
+                  </div>
+
+                  {(loanUnit > 0 || maxExtensionLimit > 0) && !isCreditExceeded && (
+                    <div className="flex justify-between gap-3 text-[13px]">
+                      <dt className="text-slate-600">Credit left after this order</dt>
+                      <dd className="font-medium text-slate-800">{money(availableCredit - total)}</dd>
+                    </div>
+                  )}
+                </dl>
+
+                {isCreditExceeded && (
+                  <div className="flex items-start gap-2.5 border-l-4 border-red-500 bg-red-50 px-3 py-2.5 text-[13px] text-red-900">
+                    <HugeiconsIcon
+                      icon={Alert01Icon}
+                      size={16}
+                      strokeWidth={1.8}
+                      className="mt-0.5 shrink-0"
+                    />
+                    <div>
+                      <p className="font-medium">Not enough credit</p>
+                      <p className="mt-0.5">
+                        This order is {money(total - availableCredit)} over your available credit.
+                        Remove some items to continue.
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="border-t border-slate-200 p-4">
+                <button
+                  onClick={onSubmit}
+                  disabled={isButtonDisabled}
+                  className="flex h-11 w-full items-center justify-center gap-2 rounded-sm bg-brand-700 text-sm font-medium text-white hover:bg-brand-800 disabled:bg-slate-200 disabled:text-slate-500"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <HugeiconsIcon
+                        icon={Loading03Icon}
+                        size={16}
+                        strokeWidth={2}
+                        className="animate-spin"
+                      />
+                      Placing order...
+                    </>
+                  ) : (
+                    'Place order'
+                  )}
+                </button>
+
+                <p className="mt-3 text-center text-[12px] leading-5 text-slate-500">
+                  Placing this order authorises the deduction from your salary at 0% interest.
+                </p>
+                {complianceStatus && (
+                  <p className="mt-1 text-center text-[12px] text-slate-400">
+                    Account status: <span className="font-medium">{complianceStatus}</span>
                   </p>
                 )}
               </div>
-            </CardContent>
-          </Card>
+            </div>
 
-          {/* Order Items Section */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Order Items</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {cartItems && cartItems.length > 0 ? (
-                <div className="space-y-4">
-                  {cartItems.map((item) => (
-                    <div key={item.id} className="flex gap-4 p-3 rounded-lg border hover:bg-gray-50 transition-colors">
-                      <div className="relative h-20 w-20 rounded-md overflow-hidden border">
-                        <Image
-                          src={item.product.product_image || '/placeholder-product.jpg'}
-                          alt={item.product.name}
-                          fill
-                          className="object-cover"
-                        />
-                      </div>
-                      <div className="flex-1">
-                        <h3 className="font-medium">{item.product.name}</h3>
-                        <div className="flex items-center gap-2 mt-1">
-                          <span className={`text-xs px-2 py-1 rounded ${
-                            item.product.isPerishable
-                              ? "bg-green-100 text-green-800 border border-green-200"
-                              : "bg-blue-100 text-blue-800 border border-blue-200"
-                          }`}>
-                            {item.product.isPerishable ? "Perishable" : "Non-Perishable"}
-                          </span>
-                          <span className="text-sm text-gray-500">
-                            Quantity: {item.quantity}
-                          </span>
-                        </div>
-                        <p className="text-lg font-medium mt-2">
-                          {new Intl.NumberFormat('en-NG', {
-                            style: 'currency',
-                            currency: item.product.currency || 'NGN',
-                          }).format(item.product.basePrice * item.quantity)}
-                        </p>
-                        <p className="text-sm text-gray-500">
-                          {item.quantity} × {new Intl.NumberFormat('en-NG', {
-                            style: 'currency',
-                            currency: item.product.currency || 'NGN',
-                          }).format(item.product.basePrice)} each
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <div className="mb-4">
-                    <svg 
-                      xmlns="http://www.w3.org/2000/svg" 
-                      className="h-16 w-16 text-gray-300 mx-auto" 
-                      fill="none" 
-                      viewBox="0 0 24 24" 
-                      stroke="currentColor"
-                    >
-                      <path 
-                        strokeLinecap="round" 
-                        strokeLinejoin="round" 
-                        strokeWidth={1.5} 
-                        d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" 
-                      />
-                    </svg>
-                  </div>
-                  <p className="text-lg text-gray-600 mb-4">Your cart is empty</p>
-                  <Button asChild>
-                    <Link href="/employee-dashboard/products">Browse Products</Link>
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Order Summary & Checkout Section */}
-        <div>
-          <Card className="sticky top-4 border-2 border-gray-100">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <svg 
-                  xmlns="http://www.w3.org/2000/svg" 
-                  className="h-5 w-5 text-green-600" 
-                  fill="none" 
-                  viewBox="0 0 24 24" 
-                  stroke="currentColor"
-                >
-                  <path 
-                    strokeLinecap="round" 
-                    strokeLinejoin="round" 
-                    strokeWidth={2} 
-                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" 
-                  />
-                </svg>
-                Order Summary
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span>Items ({cartItems?.reduce((sum, item) => sum + item.quantity, 0) || 0})</span>
-                  <span>
-                    {new Intl.NumberFormat('en-NG', {
-                      style: 'currency',
-                      currency: 'NGN',
-                    }).format(subtotal)}
-                  </span>
-                </div>
-                
-                {/* Credit Limit Information */}
-                <div className="p-3 bg-gray-50 rounded-lg border">
-                  <div className="flex justify-between items-center mb-1">
-                    <span className="text-sm font-medium">Total Purchasing Unit</span>
-                    <span className="text-sm font-medium text-green-600">
-                      {new Intl.NumberFormat('en-NG', {
-                        style: 'currency',
-                        currency: 'NGN',
-                      }).format(totalPurchasingUnit)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Purchasing Unit Remaining</span>
-                    <span className="text-gray-600">
-                      {new Intl.NumberFormat('en-NG', {
-                        style: 'currency',
-                        currency: 'NGN',
-                      }).format(loanUnit)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Extension Buffer Remaining</span>
-                    <span className="text-yellow-700">
-                      {new Intl.NumberFormat('en-NG', {
-                        style: 'currency',
-                        currency: 'NGN',
-                      }).format(extensionRemaining)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Extension Buffer Used</span>
-                    <span className="text-yellow-700">
-                      {new Intl.NumberFormat('en-NG', {
-                        style: 'currency',
-                        currency: 'NGN',
-                      }).format(loanExtension)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between text-sm font-medium mt-1">
-                    <span className="text-green-700">Available Credit (spendable now)</span>
-                    <span className="text-green-700">
-                      {new Intl.NumberFormat('en-NG', {
-                        style: 'currency',
-                        currency: 'NGN',
-                      }).format(availableCredit)}
-                    </span>
-                  </div>
-                  {(totalPurchasingUnit > 0 || maxExtensionLimit > 0) && (
-                    <div className="mt-2">
-                      <div className="mb-2">
-                        <div className="flex justify-between text-xs text-gray-500 mb-1">
-                          <span>Purchasing Unit</span>
-                          <span>
-                            {new Intl.NumberFormat('en-NG', {
-                              style: 'currency',
-                              currency: 'NGN',
-                            }).format(loanUnit)} remaining
-                          </span>
-                        </div>
-                        <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                          <div
-                            className={`${loanUnit <= 0 ? 'bg-red-500' : 'bg-green-500'} h-full rounded-full transition-all duration-300`}
-                            style={{ width: `${purchasingUnitProgress}%` }}
-                          />
-                        </div>
-                        <p className="text-[11px] text-gray-500 mt-1">
-                          Used: {new Intl.NumberFormat('en-NG', {
-                            style: 'currency',
-                            currency: 'NGN',
-                          }).format(purchasingUnitUsed)} of {new Intl.NumberFormat('en-NG', {
-                            style: 'currency',
-                            currency: 'NGN',
-                          }).format(totalPurchasingUnit)}
-                        </p>
-                      </div>
-
-                      <div>
-                        <div className="flex justify-between text-xs text-gray-500 mb-1">
-                          <span>Extension Buffer</span>
-                          <span>
-                            {new Intl.NumberFormat('en-NG', {
-                              style: 'currency',
-                              currency: 'NGN',
-                            }).format(extensionRemaining)} remaining
-                          </span>
-                        </div>
-                        <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                          <div
-                            className="h-full bg-yellow-500 rounded-full transition-all duration-300"
-                            style={{ width: `${extensionProgress}%` }}
-                          />
-                        </div>
-                        <p className="text-[11px] text-gray-500 mt-1">
-                          Used: {new Intl.NumberFormat('en-NG', {
-                            style: 'currency',
-                            currency: 'NGN',
-                          }).format(loanExtension)} of {new Intl.NumberFormat('en-NG', {
-                            style: 'currency',
-                            currency: 'NGN',
-                          }).format(maxExtensionLimit)}
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-                
-                <div className="border-t pt-3">
-                  <div className="flex justify-between font-bold text-lg">
-                    <span>Total Amount</span>
-                    <span className="text-green-700">
-                      {new Intl.NumberFormat('en-NG', {
-                        style: 'currency',
-                        currency: 'NGN',
-                      }).format(total)}
-                    </span>
-                  </div>
-                  
-                  {/* Remaining Credit After Purchase */}
-                  {(loanUnit > 0 || maxExtensionLimit > 0) && (
-                    <div className="mt-2 p-2 bg-green-50 rounded border border-green-100">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-green-800">Credit After Purchase</span>
-                        <span className="font-medium text-green-800">
-                          {new Intl.NumberFormat('en-NG', {
-                            style: 'currency',
-                            currency: 'NGN',
-                          }).format(availableCredit - total)}
-                        </span>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {/* Credit Check Warning */}
-                  {isCreditExceeded && (
-                    <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
-                      <div className="flex items-start gap-2">
-                        <svg 
-                          xmlns="http://www.w3.org/2000/svg" 
-                          className="h-5 w-5 text-red-600 mt-0.5 flex-shrink-0" 
-                          fill="none" 
-                          viewBox="0 0 24 24" 
-                          stroke="currentColor"
-                        >
-                          <path 
-                            strokeLinecap="round" 
-                            strokeLinejoin="round" 
-                            strokeWidth={2} 
-                            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.998-.833-2.732 0L4.103 16.5c-.77.833.192 2.5 1.732 2.5z" 
-                          />
-                        </svg>
-                        <div className="text-sm text-red-700">
-                          <p className="font-medium">Insufficient Credit</p>
-                          <p className="mt-1">
-                            This order exceeds your available credit by{' '}
-                            {new Intl.NumberFormat('en-NG', {
-                              style: 'currency',
-                              currency: 'NGN',
-                            }).format(total - availableCredit)}
-                            . Please reduce your order amount.
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
+            <div className="flex items-center gap-3 border border-slate-200 bg-white p-4">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-slate-100 text-slate-600">
+                <HugeiconsIcon icon={HelpCircleIcon} size={19} strokeWidth={1.8} />
+              </span>
+              <div className="text-[13px]">
+                <p className="font-medium text-slate-800">Need help?</p>
+                <p className="text-slate-500">Call the fulfillment office on 0800 3684 8</p>
               </div>
-            </CardContent>
-            <CardContent className="border-t">
-              <Button 
-                className="w-full bg-green-700 hover:bg-green-600 text-white" 
-                size="lg"
-                onClick={onSubmit}
-                disabled={isButtonDisabled}
-              >
-                {isSubmitting ? (
-                  <span className="flex items-center gap-2">
-                    <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Processing...
-                  </span>
-                ) : (
-                  'Place Order'
-                )}
-              </Button>
-              <p className="text-xs text-gray-500 text-center mt-3">
-                By placing this order, you agree to our Terms of Service and Privacy Policy
-              </p>
-              {complianceStatus && (
-                <p className="text-xs text-center mt-1 text-gray-400">
-                  Account Status: <span className="font-medium">{complianceStatus}</span>
-                </p>
-              )}
-            </CardContent>
-          </Card>
-          
-          {/* Help Section */}
-          <Card className="mt-4">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
-                  <svg 
-                    xmlns="http://www.w3.org/2000/svg" 
-                    className="h-5 w-5 text-blue-600" 
-                    fill="none" 
-                    viewBox="0 0 24 24" 
-                    stroke="currentColor"
-                  >
-                    <path 
-                      strokeLinecap="round" 
-                      strokeLinejoin="round" 
-                      strokeWidth={2} 
-                      d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" 
-                    />
-                  </svg>
-                </div>
-                <div>
-                  <h4 className="font-medium">Need Help?</h4>
-                  <p className="text-sm text-gray-600">Contact fulfillment office for assistance</p>
-                </div>
-              </div>
-              {/* <Button variant="outline" className="w-full" asChild>
-                <Link href="/employee-dashboard/help">
-                  Get Support
-                </Link>
-              </Button> */}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </div>
       </div>
     </div>

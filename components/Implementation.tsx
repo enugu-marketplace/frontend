@@ -1,565 +1,404 @@
-"use client";
+import Link from "next/link";
+import { HugeiconsIcon } from "@hugeicons/react";
+import {
+  Rocket01Icon,
+  ChartLineData01Icon,
+  Alert01Icon,
+  Tick02Icon,
+  Shield01Icon,
+} from "@hugeicons/core-free-icons";
 
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+const phases = [
+  {
+    label: "Phase 1",
+    name: "Pilot programme",
+    timing: "3-6 months",
+    scope: "Selected ministries and departments",
+    objectives: [
+      "Test the operational model with a handful of state ministries",
+      "Validate GIFMIS integration and the payroll deduction process",
+      "Establish the initial supplier network through the Marketing Company",
+      "Gather feedback and surface operational problems early",
+    ],
+    deliverables: [
+      "Launch with 500 to 1,000 workers",
+      "Basic food categories available to order",
+      "First performance metrics and feedback reports",
+      "Technical integration documentation",
+    ],
+  },
+  {
+    label: "Phase 2",
+    name: "Gradual expansion",
+    timing: "6-12 months",
+    scope: "Additional ministries and departments",
+    objectives: [
+      "Scale operations on what the pilot taught us",
+      "Widen the product range and the supplier base",
+      "Refine credit assessment and risk management",
+      "Put stronger monitoring and evaluation in place",
+    ],
+    deliverables: [
+      "5,000 to 10,000 workers enrolled",
+      "Full catalogue including local produce",
+      "Reporting and analytics dashboard",
+      "Financial literacy programme for staff",
+    ],
+  },
+  {
+    label: "Phase 3",
+    name: "Full-scale rollout",
+    timing: "12 months onward",
+    scope: "All eligible state workers",
+    objectives: [
+      "Complete rollout to every eligible state worker",
+      "Optimise supply chain and distribution networks",
+      "Reach the target economic impact on local agriculture",
+      "Establish a long-term sustainability framework",
+    ],
+    deliverables: [
+      "Scheme open to all state workers",
+      "Mature supplier and distribution network",
+      "Full impact assessment report",
+      "A framework other states can replicate",
+    ],
+  },
+];
+
+const requirements = [
+  {
+    title: "Executive support",
+    body: "Sustained backing from state leadership, with a steering committee that can clear blockers between ministries.",
+  },
+  {
+    title: "Worker buy-in",
+    body: "Staff need to understand the terms before they enrol, which depends on plain communication and a helpdesk that answers.",
+  },
+  {
+    title: "Supplier network",
+    body: "Enough vetted local suppliers to hold prices and keep essential items in stock through the year.",
+  },
+  {
+    title: "Technical infrastructure",
+    body: "Reliable GIFMIS integration, tested backups, and a support team that can respond to failures quickly.",
+  },
+  {
+    title: "Performance monitoring",
+    body: "Enrollment, repayment and satisfaction tracked continuously rather than reconstructed after the fact.",
+  },
+  {
+    title: "Legal compliance",
+    body: "Deductions operated within the Nigerian Labour Act, with documented consent and data protection safeguards.",
+  },
+];
+
+const reporting = [
+  {
+    title: "Monthly",
+    items: [
+      "Beneficiary enrollment and disbursements",
+      "Repayment rates and delinquency tracking",
+      "Financial performance metrics",
+    ],
+  },
+  {
+    title: "Quarterly",
+    items: [
+      "Worker satisfaction surveys",
+      "Local economic impact assessment",
+      "Supplier performance evaluation",
+    ],
+  },
+];
+
+const risks = [
+  {
+    title: "Technical",
+    items: [
+      "GIFMIS integration built with fallback mechanisms",
+      "Regular system audits and performance testing",
+      "Backup and disaster recovery protocols",
+      "A technical support team on call for incidents",
+    ],
+  },
+  {
+    title: "Financial",
+    items: [
+      "Credit assessment applied to every participant",
+      "Gradual scaling to limit financial exposure",
+      "Reserve fund held against defaults",
+      "Routine financial health checks and audits",
+    ],
+  },
+  {
+    title: "Operational",
+    items: [
+      "Pilot used to find operational problems first",
+      "Training for everyone who touches the process",
+      "Documented standard operating procedures",
+      "Alternative suppliers to absorb disruption",
+    ],
+  },
+  {
+    title: "Compliance",
+    items: [
+      "Legal reviews against the Nigerian Labour Act",
+      "Transparent consent from every participant",
+      "Data protection and privacy safeguards",
+      "Terms communicated plainly to all workers",
+    ],
+  },
+];
+
+const contingencies = [
+  {
+    title: "If participation is low",
+    items: [
+      "Communication campaign focused on the concrete benefit",
+      "Incentives for early adopters",
+      "A simpler enrollment process",
+      "Focus groups to understand what is holding staff back",
+    ],
+  },
+  {
+    title: "If supply is disrupted",
+    items: [
+      "More than one supplier per product category",
+      "Buffer stock held for essential items",
+      "Local producer development programme",
+      "Alternative distribution channels",
+    ],
+  },
+  {
+    title: "Government engagement",
+    items: [
+      "Regular progress reporting to all ministries",
+      "A liaison officer designated per department",
+      "Executive steering committee for oversight",
+      "Clear escalation pathways for issues",
+    ],
+  },
+  {
+    title: "Worker communication",
+    items: [
+      "Multi-channel communication strategy",
+      "Regular feedback mechanisms and surveys",
+      "Transparent reporting of scheme performance",
+      "A dedicated helpdesk for queries",
+    ],
+  },
+];
+
+function BulletList({ items }: { items: string[] }) {
+  return (
+    <ul className="space-y-2">
+      {items.map((item) => (
+        <li key={item} className="flex items-start gap-2.5 text-[13px] leading-6 text-slate-600">
+          <HugeiconsIcon
+            icon={Tick02Icon}
+            size={15}
+            strokeWidth={2}
+            className="mt-1 shrink-0 text-brand-700"
+          />
+          {item}
+        </li>
+      ))}
+    </ul>
+  );
+}
 
 export default function ImplementationRoadmap() {
   return (
-    <div className="w-full max-w-6xl mx-auto p-6">
-      <h1 className="text-3xl font-bold mb-6 text-center">
-        Implementation Roadmap & Success Framework
-      </h1>
-      <p className="text-lg text-muted-foreground mb-8 text-center">
-        Phased approach ensuring sustainable rollout and continuous optimization
-      </p>
+    <div className="font-header bg-white">
+      {/* Intro */}
+      <section className="border-b border-slate-200 bg-brand-900">
+        <div className="mx-auto max-w-[1400px] px-4 py-12 lg:px-6 lg:py-16">
+          <p className="flex items-center gap-2 text-[13px] font-medium text-leaf-400">
+            <HugeiconsIcon icon={Rocket01Icon} size={15} strokeWidth={2} />
+            Implementation roadmap
+          </p>
 
-      <Tabs defaultValue="implementation" className="w-full">
-        <TabsList className="grid w-full grid-cols-4 mb-8">
-          <TabsTrigger value="implementation">
-            Implement 
-          </TabsTrigger>
-          <TabsTrigger value="success">Success</TabsTrigger>
-          <TabsTrigger value="monitoring">Monitoring</TabsTrigger>
-          <TabsTrigger value="risk">Risk</TabsTrigger>
-        </TabsList>
+          <h1 className="mt-3 max-w-3xl text-3xl font-semibold leading-tight text-white lg:text-4xl">
+            How the scheme is being rolled out.
+          </h1>
 
-        <TabsContent value="implementation">
-          {/* Implementation Phases content remains the same as before */}
-          <div className="space-y-6">
-            {/* Phase 1 */}
-            <Card>
-              <CardHeader className="bg-blue-50">
-                <CardTitle className="text-2xl">
-                  Phase 1: Pilot Program
-                </CardTitle>
-                <p className="text-sm text-muted-foreground">
-                  3-6 months | Limited ministries/departments
+          <p className="mt-4 max-w-2xl text-[15px] leading-7 text-brand-100/85">
+            A phased rollout: prove the model with a small group, expand on what it teaches, then
+            open the scheme to every eligible state worker.
+          </p>
+        </div>
+      </section>
+
+      {/* Phases */}
+      <section className="mx-auto max-w-[1400px] px-4 py-12 lg:px-6 lg:py-16">
+        <h2 className="text-xl font-semibold text-slate-900">The three phases</h2>
+
+        <div className="mt-6 grid gap-4 lg:grid-cols-3">
+          {phases.map((phase) => (
+            <div key={phase.label} className="flex flex-col border border-slate-200 bg-white">
+              <div className="border-b border-slate-200 bg-slate-50 px-5 py-4">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-brand-700">
+                  {phase.label}
                 </p>
-              </CardHeader>
-              <CardContent className="pt-6">
-                <div className="mb-6">
-                  <h3 className="text-lg font-semibold mb-2">Key Objectives</h3>
-                  <ul className="list-disc pl-5 space-y-1">
-                    <li>Test operational model with select state ministries</li>
-                    <li>
-                      Validate GIFM's integration and payroll deduction
-                      processes
-                    </li>
-                    <li>
-                      Establish initial supplier network through Marketing
-                      Company
-                    </li>
-                    <li>Gather feedback and identify operational challenges</li>
-                  </ul>
-                </div>
-
-                <div>
-                  <h3 className="text-lg font-semibold mb-2">
-                    Expected Deliverables
-                  </h3>
-                  <ul className="list-disc pl-5 space-y-1">
-                    <li>Pilot program launch with 500-1000 workers</li>
-                    <li>Basic food item categories available</li>
-                    <li>Initial performance metrics and feedback reports</li>
-                    <li>Technical integration documentation</li>
-                  </ul>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Phase 2 */}
-            <Card>
-              <CardHeader className="bg-green-50">
-                <CardTitle className="text-2xl">
-                  Phase 2: Gradual Expansion
-                </CardTitle>
-                <p className="text-sm text-muted-foreground">
-                  6-12 months | Additional ministries and departments
+                <p className="mt-1 text-base font-semibold text-slate-900">{phase.name}</p>
+                <p className="mt-1 text-[12px] text-slate-500">
+                  {phase.timing} &middot; {phase.scope}
                 </p>
-              </CardHeader>
-              <CardContent className="pt-6">
-                <div className="mb-6">
-                  <h3 className="text-lg font-semibold mb-2">Key Objectives</h3>
-                  <ul className="list-disc pl-5 space-y-1">
-                    <li>Scale operations based on pilot learnings</li>
-                    <li>Expand food product categories and supplier base</li>
-                    <li>
-                      Refine credit assessment and risk management processes
-                    </li>
-                    <li>
-                      Implement enhanced monitoring and evaluation systems
-                    </li>
-                  </ul>
-                </div>
+              </div>
 
+              <div className="flex-1 space-y-4 px-5 py-4">
                 <div>
-                  <h3 className="text-lg font-semibold mb-2">
-                    Expected Deliverables
-                  </h3>
-                  <ul className="list-disc pl-5 space-y-1">
-                    <li>Expansion to 5,000-10,000 workers</li>
-                    <li>Comprehensive food catalog with local produce</li>
-                    <li>Advanced reporting and analytics dashboard</li>
-                    <li>Worker financial literacy program launch</li>
-                  </ul>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Phase 3 */}
-            <Card>
-              <CardHeader className="bg-purple-50">
-                <CardTitle className="text-2xl">
-                  Phase 3: Full-Scale Implementation
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-6">
-                <div className="mb-6">
-                  <h3 className="text-lg font-semibold mb-2">Key Objectives</h3>
-                  <ul className="list-disc pl-5 space-y-1">
-                    <li>Complete rollout to all eligible state workers</li>
-                    <li>Optimize supply chain and distribution networks</li>
-                    <li>Achieve target economic impact on local agriculture</li>
-                    <li>Establish long-term sustainability framework</li>
-                  </ul>
-                </div>
-
-                <div>
-                  <h3 className="text-lg font-semibold mb-2">
-                    Expected Deliverables
-                  </h3>
-                  <ul className="list-disc pl-5 space-y-1">
-                    <li>Full scheme availability to all state workers</li>
-                    <li>Mature supplier ecosystem and distribution network</li>
-                    <li>Comprehensive impact assessment report</li>
-                    <li>Framework for other states to replicate</li>
-                  </ul>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="success">
-          {/* Success Factors content remains the same as before */}
-          <div className="space-y-6">
-            <Card>
-              <CardHeader className="bg-amber-50">
-                <CardTitle className="text-2xl">
-                  Critical Success Requirements
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-4">
-                    <div>
-                      <h3 className="text-lg font-semibold mb-2 text-blue-600">
-                        Stakeholder Engagement
-                      </h3>
-                      <p className="text-muted-foreground">
-                        Active participation from all government entities and
-                        clear communication with workers
-                      </p>
-                    </div>
-
-                    <div>
-                      <h3 className="text-lg font-semibold mb-2 text-blue-600">
-                        Technical Infrastructure
-                      </h3>
-                      <p className="text-muted-foreground">
-                        Robust GIFMIS integration and automated compliance
-                        monitoring systems
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="space-y-4">
-                    <div>
-                      <h3 className="text-lg font-semibold mb-2 text-blue-600">
-                        Performance Monitoring
-                      </h3>
-                      <p className="text-muted-foreground">
-                        Continuous tracking of KPIs and regular scheme
-                        optimization
-                      </p>
-                    </div>
-
-                    <div>
-                      <h3 className="text-lg font-semibold mb-2 text-blue-600">
-                        Legal Compliance
-                      </h3>
-                      <p className="text-muted-foreground">
-                        Strict adherence to Nigerian Labour Act and transparent
-                        consent processes
-                      </p>
-                    </div>
+                  <p className="text-[12px] font-semibold uppercase tracking-wide text-slate-500">
+                    Objectives
+                  </p>
+                  <div className="mt-2">
+                    <BulletList items={phase.objectives} />
                   </div>
                 </div>
-              </CardContent>
-            </Card>
 
-            <Card>
-              <CardHeader className="bg-amber-50">
-                <CardTitle className="text-2xl">
-                  Critical Success Requirements
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-6">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div>
-                    <h3 className="text-lg font-semibold mb-2 text-green-600">
-                      Executive Support
-                    </h3>
-                    <p className="text-muted-foreground">
-                      Strong commitment from Governor's Office and all relevant
-                      ministries
-                    </p>
-                  </div>
-
-                  <div>
-                    <h3 className="text-lg font-semibold mb-2 text-green-600">
-                      Worker Buy-in
-                    </h3>
-                    <p className="text-muted-foreground">
-                      Comprehensive communication and education about scheme
-                      benefits
-                    </p>
-                  </div>
-
-                  <div>
-                    <h3 className="text-lg font-semibold mb-2 text-green-600">
-                      Supplier Network
-                    </h3>
-                    <p className="text-muted-foreground">
-                      Reliable local producers and efficient distribution
-                      channels
-                    </p>
+                <div className="border-t border-slate-100 pt-4">
+                  <p className="text-[12px] font-semibold uppercase tracking-wide text-slate-500">
+                    Deliverables
+                  </p>
+                  <div className="mt-2">
+                    <BulletList items={phase.deliverables} />
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="monitoring">
-          {/* Monitoring & KPIs content remains the same as before */}
-          <div className="space-y-6">
-            <Card>
-              <CardHeader className="bg-indigo-50">
-                <CardTitle className="text-2xl">
-                  Key Performance Indicators (KPIs)
-                </CardTitle>
-                <p className="text-sm text-muted-foreground">
-                  Comprehensive metrics for continuous monitoring and
-                  optimization
-                </p>
-              </CardHeader>
-              <CardContent className="pt-6">
-                <div className="overflow-x-auto">
-                  <table className="w-full border-collapse">
-                    <thead>
-                      <tr className="bg-gray-100">
-                        <th className="border p-3 text-left font-semibold">
-                          Performance Metric
-                        </th>
-                        <th className="border p-3 text-left font-semibold">
-                          Target
-                        </th>
-                        <th className="border p-3 text-left font-semibold">
-                          Monitoring Frequency
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr className="hover:bg-gray-50">
-                        <td className="border p-3 font-medium">
-                          Beneficiary Uptake
-                        </td>
-                        <td className="border p-3">
-                          ≥ 70% of eligible workers
-                        </td>
-                        <td className="border p-3">Monthly</td>
-                      </tr>
-                      <tr className="hover:bg-gray-50">
-                        <td className="border p-3 font-medium">
-                          Repayment Rate
-                        </td>
-                        <td className="border p-3">≥ 95%</td>
-                        <td className="border p-3">Monthly</td>
-                      </tr>
-                      <tr className="hover:bg-gray-50">
-                        <td className="border p-3 font-medium">
-                          Local Content Share
-                        </td>
-                        <td className="border p-3">≥ 80% of procured items</td>
-                        <td className="border p-3">Quarterly</td>
-                      </tr>
-                      <tr className="hover:bg-gray-50">
-                        <td className="border p-3 font-medium">
-                          Worker Satisfaction
-                        </td>
-                        <td className="border p-3">≥ 4.5/5.0 rating</td>
-                        <td className="border p-3">Quarterly</td>
-                      </tr>
-                      <tr className="hover:bg-gray-50">
-                        <td className="border p-3 font-medium">
-                          Economic Impact
-                        </td>
-                        <td className="border p-3">
-                          NGN 500M+ annual local spending
-                        </td>
-                        <td className="border p-3">Annually</td>
-                      </tr>
-                      <tr className="hover:bg-gray-50">
-                        <td className="border p-3 font-medium">Default Rate</td>
-                        <td className="border p-3">&lt; 5%</td>
-                        <td className="border p-3">Monthly</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </CardContent>
-            </Card>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader className="bg-blue-50">
-                  <CardTitle className="text-xl">Reporting Framework</CardTitle>
-                </CardHeader>
-                <CardContent className="pt-6">
-                  <div className="space-y-6">
-                    <div>
-                      <h3 className="text-lg font-semibold mb-3 text-blue-700">
-                        Monthly Reports
-                      </h3>
-                      <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
-                        <li>Beneficiary enrollment and loan disbursements</li>
-                        <li>Repayment rates and delinquency tracking</li>
-                        <li>Financial performance metrics</li>
-                      </ul>
-                    </div>
-
-                    <div>
-                      <h3 className="text-lg font-semibold mb-3 text-blue-700">
-                        Quarterly Reviews
-                      </h3>
-                      <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
-                        <li>Worker satisfaction surveys</li>
-                        <li>Local economic impact assessment</li>
-                        <li>Supplier performance evaluation</li>
-                      </ul>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="bg-green-50">
-                  <CardTitle className="text-xl">
-                    Adjustment Mechanisms
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="pt-6">
-                  <div className="space-y-6">
-                    <div>
-                      <h3 className="text-lg font-semibold mb-3 text-green-700">
-                        Operational Adjustments
-                      </h3>
-                      <p className="text-muted-foreground">
-                        Regular review of loan limits, repayment terms, and
-                        product categories based on performance data and worker
-                        feedback.
-                      </p>
-                    </div>
-
-                    <div>
-                      <h3 className="text-lg font-semibold mb-3 text-green-700">
-                        Strategic Pivots
-                      </h3>
-                      <p className="text-muted-foreground">
-                        Ability to modify scheme parameters, expand or contract
-                        operations based on financial sustainability and impact
-                        metrics.
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+              </div>
             </div>
+          ))}
+        </div>
+      </section>
+
+      {/* What it depends on */}
+      <section className="border-y border-slate-200 bg-slate-50">
+        <div className="mx-auto max-w-[1400px] px-4 py-12 lg:px-6 lg:py-16">
+          <div className="flex items-center gap-2.5">
+            <HugeiconsIcon
+              icon={Shield01Icon}
+              size={20}
+              strokeWidth={1.8}
+              className="text-brand-700"
+            />
+            <h2 className="text-xl font-semibold text-slate-900">What it depends on</h2>
           </div>
-        </TabsContent>
+          <p className="mt-1 text-sm text-slate-600">
+            Six conditions the rollout cannot succeed without.
+          </p>
 
-        <TabsContent value="risk">
-          <div className="space-y-6">
-            <Card>
-              <CardHeader className="bg-red-50">
-                <CardTitle className="text-2xl">
-                  Risk Mitigation Strategies
-                </CardTitle>
-                <p className="text-sm text-muted-foreground">
-                  Proactive measures to address potential challenges and ensure
-                  program success
-                </p>
-              </CardHeader>
-              <CardContent className="pt-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-6">
-                    <div>
-                      <h3 className="text-lg font-semibold mb-2 text-red-600">
-                        Technical Risks
-                      </h3>
-                      <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
-                        <li>
-                          Implement robust GIFMIS integration with fallback
-                          mechanisms
-                        </li>
-                        <li>Regular system audits and performance testing</li>
-                        <li>Data backup and disaster recovery protocols</li>
-                        <li>
-                          Dedicated technical support team for rapid issue
-                          resolution
-                        </li>
-                      </ul>
-                    </div>
+          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {requirements.map((requirement) => (
+              <div key={requirement.title} className="border border-slate-200 bg-white p-5">
+                <p className="text-sm font-medium text-slate-900">{requirement.title}</p>
+                <p className="mt-2 text-[13px] leading-6 text-slate-600">{requirement.body}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
 
-                    <div>
-                      <h3 className="text-lg font-semibold mb-2 text-red-600">
-                        Financial Risks
-                      </h3>
-                      <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
-                        <li>
-                          Strict credit assessment protocols for all
-                          participants
-                        </li>
-                        <li>Gradual scaling to manage financial exposure</li>
-                        <li>Reserve fund for potential defaults</li>
-                        <li>Regular financial health checks and audits</li>
-                      </ul>
-                    </div>
-                  </div>
+      {/* Measurement */}
+      <section className="mx-auto max-w-[1400px] px-4 py-12 lg:px-6 lg:py-16">
+        <div className="flex items-center gap-2.5">
+          <HugeiconsIcon
+            icon={ChartLineData01Icon}
+            size={20}
+            strokeWidth={1.8}
+            className="text-brand-700"
+          />
+          <h2 className="text-xl font-semibold text-slate-900">How progress is measured</h2>
+        </div>
 
-                  <div className="space-y-6">
-                    <div>
-                      <h3 className="text-lg font-semibold mb-2 text-red-600">
-                        Operational Risks
-                      </h3>
-                      <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
-                        <li>
-                          Pilot program to identify and address operational
-                          challenges
-                        </li>
-                        <li>Comprehensive training for all stakeholders</li>
-                        <li>
-                          Clear standard operating procedures and documentation
-                        </li>
-                        <li>
-                          Alternative supplier network to prevent disruptions
-                        </li>
-                      </ul>
-                    </div>
-
-                    <div>
-                      <h3 className="text-lg font-semibold mb-2 text-red-600">
-                        Compliance Risks
-                      </h3>
-                      <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
-                        <li>
-                          Regular legal reviews to ensure adherence to Nigerian
-                          Labour Act
-                        </li>
-                        <li>
-                          Transparent consent processes for all participants
-                        </li>
-                        <li>Data protection and privacy safeguards</li>
-                        <li>
-                          Clear communication of terms and conditions to all
-                          workers
-                        </li>
-                      </ul>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader className="bg-orange-50">
-                  <CardTitle className="text-xl">
-                    Contingency Planning
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="pt-6">
-                  <div className="space-y-4">
-                    <div>
-                      <h3 className="text-lg font-semibold mb-2 text-orange-600">
-                        Low Participation Scenario
-                      </h3>
-                      <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
-                        <li>
-                          Enhanced communication campaign highlighting benefits
-                        </li>
-                        <li>Incentives for early adopters</li>
-                        <li>Simplified enrollment process</li>
-                        <li>Focus groups to understand and address concerns</li>
-                      </ul>
-                    </div>
-
-                    <div>
-                      <h3 className="text-lg font-semibold mb-2 text-orange-600">
-                        Supply Chain Disruptions
-                      </h3>
-                      <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
-                        <li>
-                          Multiple supplier options for each product category
-                        </li>
-                        <li>Buffer stock for essential items</li>
-                        <li>Local producer development program</li>
-                        <li>Alternative distribution channels</li>
-                      </ul>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="bg-teal-50">
-                  <CardTitle className="text-xl">
-                    Stakeholder Risk Management
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="pt-6">
-                  <div className="space-y-4">
-                    <div>
-                      <h3 className="text-lg font-semibold mb-2 text-teal-600">
-                        Government Engagement
-                      </h3>
-                      <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
-                        <li>Regular progress reporting to all ministries</li>
-                        <li>Designated liaison officers for each department</li>
-                        <li>Executive steering committee for oversight</li>
-                        <li>Clear escalation pathways for issue resolution</li>
-                      </ul>
-                    </div>
-
-                    <div>
-                      <h3 className="text-lg font-semibold mb-2 text-teal-600">
-                        Worker Communication
-                      </h3>
-                      <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
-                        <li>Multi-channel communication strategy</li>
-                        <li>Regular feedback mechanisms and surveys</li>
-                        <li>Transparent reporting of program performance</li>
-                        <li>Dedicated helpdesk for queries and concerns</li>
-                      </ul>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+        <div className="mt-6 grid gap-4 md:grid-cols-2">
+          {reporting.map((cycle) => (
+            <div key={cycle.title} className="border border-slate-200 bg-white">
+              <p className="border-b border-slate-200 px-5 py-3 text-[13px] font-semibold uppercase tracking-wide text-slate-600">
+                {cycle.title} reporting
+              </p>
+              <div className="px-5 py-4">
+                <BulletList items={cycle.items} />
+              </div>
             </div>
+          ))}
+        </div>
+
+        <p className="mt-4 border-l-4 border-brand-700 bg-brand-50 px-4 py-3 text-[13px] leading-6 text-brand-900">
+          Reviews feed back into the rollout: operational fixes are applied within the current
+          phase, while findings that challenge the model itself go to the steering committee before
+          the next phase opens.
+        </p>
+      </section>
+
+      {/* Risk */}
+      <section className="border-t border-slate-200 bg-slate-50">
+        <div className="mx-auto max-w-[1400px] px-4 py-12 lg:px-6 lg:py-16">
+          <div className="flex items-center gap-2.5">
+            <HugeiconsIcon
+              icon={Alert01Icon}
+              size={20}
+              strokeWidth={1.8}
+              className="text-amber-600"
+            />
+            <h2 className="text-xl font-semibold text-slate-900">Risks and how they are handled</h2>
           </div>
-        </TabsContent>
-      </Tabs>
+
+          <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            {risks.map((risk) => (
+              <div key={risk.title} className="border border-slate-200 bg-white">
+                <p className="border-b border-slate-200 px-4 py-3 text-[13px] font-semibold text-slate-800">
+                  {risk.title}
+                </p>
+                <div className="px-4 py-3">
+                  <BulletList items={risk.items} />
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <h3 className="mt-10 text-base font-semibold text-slate-900">Contingencies</h3>
+          <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            {contingencies.map((plan) => (
+              <div key={plan.title} className="border border-slate-200 bg-white">
+                <p className="border-b border-slate-200 px-4 py-3 text-[13px] font-semibold text-slate-800">
+                  {plan.title}
+                </p>
+                <div className="px-4 py-3">
+                  <BulletList items={plan.items} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Close */}
+      <section className="mx-auto max-w-[1400px] px-4 py-12 lg:px-6 lg:py-16">
+        <div className="flex flex-wrap items-center justify-between gap-4 border border-slate-200 bg-white p-6">
+          <div>
+            <p className="text-base font-semibold text-slate-900">
+              Eligible for the scheme?
+            </p>
+            <p className="mt-1 text-[13px] text-slate-600">
+              Sign in with your verification number to see your purchasing unit.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <Link
+              href="/employee-login"
+              className="flex h-11 items-center rounded-sm bg-brand-700 px-5 text-sm font-medium text-white hover:bg-brand-800"
+            >
+              Sign in
+            </Link>
+            <Link
+              href="/about"
+              className="flex h-11 items-center rounded-sm border border-slate-300 px-5 text-sm font-medium text-slate-700 hover:border-brand-600 hover:text-brand-700"
+            >
+              About the scheme
+            </Link>
+          </div>
+        </div>
+      </section>
     </div>
   );
 }

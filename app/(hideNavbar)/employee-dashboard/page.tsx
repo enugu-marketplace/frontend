@@ -1,10 +1,13 @@
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { redirect } from 'next/navigation';
+import Link from 'next/link';
+import axios from 'axios';
+
 import UserChartDialog from '@/components/dashboards/users/UsersChartDialog';
 import { OrdersChart } from '@/components/dashboards/users/OrdersChart';
-import axios from 'axios';
-import { LoanStats } from '@/components/dashboards/users/LoanStats'; 
+import { LoanStats } from '@/components/dashboards/users/LoanStats';
+import ComplianceNotice from '@/components/dashboards/users/ComplianceNotice';
 
 interface ComplianceData {
   id: string;
@@ -20,9 +23,9 @@ interface ComplianceResponse {
 
 export default async function EmployeeDashboard() {
   const session = await getServerSession(authOptions);
-  
+
   if (!session?.user?.token) {
-    redirect('/login');
+    redirect('/employee-login?returnUrl=/employee-dashboard');
   }
 
   // Fetch initial data on server
@@ -36,8 +39,8 @@ export default async function EmployeeDashboard() {
   try {
     // Fetch orders
     const ordersResponse = await axios.get(`${process.env.NEXT_PUBLIC_API_BASE_URL}/user/all-order`, {
-      headers: { 
-        Authorization: `Bearer ${session.user.token}` 
+      headers: {
+        Authorization: `Bearer ${session.user.token}`
       }
     });
     totalOrders = ordersResponse.data.data?.length || 0;
@@ -47,12 +50,12 @@ export default async function EmployeeDashboard() {
       const complianceResponse = await axios.get<ComplianceResponse>(
         `${process.env.NEXT_PUBLIC_API_BASE_URL}/user/profile`,
         {
-          headers: { 
-            Authorization: `Bearer ${session.user.token}` 
+          headers: {
+            Authorization: `Bearer ${session.user.token}`
           }
         }
       );
-      
+
       if (complianceResponse.data?.data) {
         const userData = complianceResponse.data.data;
         initialLoanData = {
@@ -62,7 +65,7 @@ export default async function EmployeeDashboard() {
         complianceStatus = userData.is_compliance_submitted || false;
       }
     } catch (complianceError) {
-      console.log('⚠️ Using session data for loan info (profile endpoint not available)');
+      console.log('Using session data for loan info (profile endpoint not available)');
       // Fallback to session data if compliance endpoint fails
     }
   } catch (error) {
@@ -71,71 +74,63 @@ export default async function EmployeeDashboard() {
     totalOrders = 0;
   }
 
+  const firstName = session?.user?.name?.split(' ')[0] || 'there';
+
   return (
-    <div className="p-4">
-      <h1 className="text-2xl font-bold">Welcome, {session?.user?.name}</h1>
-      {!complianceStatus && (
-        <div className="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-          <div className="flex items-center gap-2">
-            <svg 
-              xmlns="http://www.w3.org/2000/svg" 
-              className="h-5 w-5 text-yellow-600" 
-              fill="none" 
-              viewBox="0 0 24 24" 
-              stroke="currentColor"
-            >
-              <path 
-                strokeLinecap="round" 
-                strokeLinejoin="round" 
-                strokeWidth={2} 
-                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.998-.833-2.732 0L4.103 16.5c-.77.833.192 2.5 1.732 2.5z" 
-              />
-            </svg>
-            <p className="text-sm text-yellow-800">
-              Please complete your <a href="/employee-dashboard/compliance" className="font-medium underline">compliance form</a> to activate your purchasing limit.
-            </p>
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-semibold text-slate-900">Welcome back, {firstName}</h1>
+          <p className="mt-1 text-sm text-slate-600">
+            Your purchasing unit, orders and spending for this salary cycle.
+          </p>
+        </div>
+
+        <Link
+          href="/employee-dashboard/products"
+          className="h-9 rounded-sm bg-brand-700 px-4 text-[13px] font-medium leading-9 text-white hover:bg-brand-800"
+        >
+          Shop products
+        </Link>
+      </div>
+
+      {!complianceStatus && <ComplianceNotice token={session.user.token} />}
+
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="border border-slate-200 bg-white p-5">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-[13px] text-slate-500">Total orders</p>
+              <p className="mt-1.5 text-2xl font-semibold text-slate-900">{totalOrders}</p>
+            </div>
+            <span className="flex h-10 w-10 items-center justify-center rounded-md bg-slate-100 text-slate-600">
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+              </svg>
+            </span>
           </div>
+
+          <Link
+            href="/employee-dashboard/orders"
+            className="mt-5 inline-block text-[13px] font-medium text-brand-700 hover:underline"
+          >
+            View order history
+          </Link>
         </div>
-      )}
-     
-      <div className="mt-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {/* Total Orders (Server component) */}
-         <div className="bg-white p-6 rounded-xl border shadow-sm flex justify-between">
-  <div>
-    <h3 className="text-sm font-medium text-gray-600">Total Orders</h3>
-    <p className="text-2xl font-bold text-gray-900 mt-2">
-      {totalOrders}
-    </p>
-  </div>
 
-  <div className="h-11 w-11 rounded-lg bg-green-50 flex items-center justify-center">
-    <svg
-      className="h-6 w-6 text-green-600"
-      fill="none"
-      viewBox="0 0 24 24"
-      stroke="currentColor"
-      strokeWidth={2.5}
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"
-      />
-    </svg>
-  </div>
-</div>
+        {/* Loan Stats (Client component with auto-refresh) */}
+        <LoanStats
+          initialLoanUnit={initialLoanData.loan_unit}
+          initialLoanTaken={initialLoanData.loan_amount_collected}
+          token={session.user.token}
+        />
+      </div>
 
-
-          {/* Loan Stats (Client component with auto-refresh) */}
-          <LoanStats 
-            initialLoanUnit={initialLoanData.loan_unit}
-            initialLoanTaken={initialLoanData.loan_amount_collected}
-            token={session.user.token}
-          />
-        </div>
-        <div className='my-6 flex md:flex-row flex-col justify-between gap-4'>
+      <div className="flex flex-col gap-4 xl:flex-row">
+        <div className="min-w-0 flex-1">
           <UserChartDialog />
+        </div>
+        <div className="min-w-0 flex-1">
           <OrdersChart />
         </div>
       </div>

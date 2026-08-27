@@ -9,7 +9,7 @@ export default async function ProductPage({ params }: { params: Promise<{ produc
   const session = await getServerSession(authOptions);
   
   if (!session?.user || session.user.role !== 'super_admin') {
-    redirect('/auth/signin');
+    redirect('/admin-login?callbackUrl=/admin-dashboard');
   }
 
   return (

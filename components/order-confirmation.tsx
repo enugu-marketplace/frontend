@@ -1,16 +1,10 @@
 'use client';
-import { Button } from '@/components/ui/button';
-import { CheckCircle, Clock, Truck, HelpCircle, Download, QrCode } from 'lucide-react';
-import Image from 'next/image';
 import Link from 'next/link';
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { useQuery } from '@tanstack/react-query';
 import axios from 'axios';
-import { Skeleton } from '@/components/ui/skeleton';
 import { useSession } from 'next-auth/react';
-import html2canvas from 'html2canvas';
-import jsPDF from 'jspdf';
 import OrderConfirmationContent from './OrderConfirmationContent';
 
 interface Order {
@@ -58,8 +52,6 @@ export default function OrderConfirmationPage() {
   const [serverUser, setServerUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
-  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
-  const contentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetch('/api/auth/session')
@@ -135,111 +127,44 @@ const generateQRCode = async (orderId: string) => {
   }
 };
 
-  const exportToPDF = async () => {
-    if (!contentRef.current) return;
-    
-    setIsGeneratingPDF(true);
-    try {
-      const canvas = await html2canvas(contentRef.current, {
-        scale: 2, // Higher quality
-        useCORS: true,
-        logging: false,
-      });
-      
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
-      const imgWidth = canvas.width;
-      const imgHeight = canvas.height;
-      const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
-      const imgX = (pdfWidth - imgWidth * ratio) / 2;
-      
-      pdf.addImage(imgData, 'PNG', imgX, 0, imgWidth * ratio, imgHeight * ratio);
-      pdf.save(`order-confirmation-${mostRecentOrder?.id.split('-')[0]}.pdf`);
-      
-      toast.success('PDF exported successfully!');
-    } catch (error) {
-      console.error('Error generating PDF:', error);
-      toast.error('Failed to export PDF');
-    } finally {
-      setIsGeneratingPDF(false);
-    }
-  };
-
   if (isLoading) {
     return (
-      <div className="container py-12">
-        <div className="max-w-3xl mx-auto bg-white dark:bg-gray-900 rounded-lg shadow-md p-8">
-          <Skeleton className="h-8 w-48 mx-auto mb-6" />
-          <div className="space-y-4">
-            {[...Array(4)].map((_, i) => (
-              <div key={i} className="flex gap-4 items-center">
-                <Skeleton className="h-16 w-16 rounded-md" />
-                <div className="flex-1 space-y-2">
-                  <Skeleton className="h-4 w-3/4" />
-                  <Skeleton className="h-4 w-1/2" />
-                </div>
-                <Skeleton className="h-4 w-20" />
-              </div>
-            ))}
-          </div>
-        </div>
+      <div className="mx-auto max-w-3xl space-y-4">
+        <div className="h-32 w-full animate-pulse border border-slate-200 bg-slate-50" />
+        <div className="h-72 w-full animate-pulse border border-slate-200 bg-slate-50" />
       </div>
     );
   }
 
   if (isError || !mostRecentOrder) {
     return (
-      <div className="container py-12">
-        <div className="max-w-3xl mx-auto bg-white dark:bg-gray-900 rounded-lg shadow-md p-8 text-center">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-            {isError ? 'Error loading order' : 'No recent orders found'}
-          </h1>
-          <p className="text-gray-600 dark:text-gray-300 mb-6">
-            {isError 
-              ? 'We encountered an error loading your order details.' 
-              : 'You haven\'t placed any orders recently.'}
-          </p>
-          <div className="flex gap-4 justify-center">
-            <Button asChild>
-              <Link href="/employee-dashboard/products">Browse Products</Link>
-            </Button>
-          </div>
-        </div>
+      <div className="mx-auto max-w-md border border-slate-200 bg-white px-6 py-14 text-center">
+        <p className="text-sm font-medium text-slate-800">
+          {isError ? 'We could not load your order' : 'No recent orders found'}
+        </p>
+        <p className="mt-1 text-[13px] text-slate-500">
+          {isError
+            ? 'Something went wrong fetching the order. Please try again in a moment.'
+            : 'Once you place an order, its confirmation will appear here.'}
+        </p>
+        <Link
+          href="/employee-dashboard/products"
+          className="mt-4 inline-block h-9 rounded-sm bg-brand-700 px-4 text-[13px] font-medium leading-9 text-white hover:bg-brand-800"
+        >
+          Browse products
+        </Link>
       </div>
     );
   }
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
-  const formatCurrency = (amount: number, currency: string) => {
-    return new Intl.NumberFormat('en-NG', {
-      style: 'currency',
-      currency: currency || 'NGN',
-    }).format(amount);
-  };
-
   return (
-    <div className="container py-12">
-      {/* Export Button */}
-      {mostRecentOrder && (
+    <div className="mx-auto max-w-3xl">
       <OrderConfirmationContent
         order={mostRecentOrder}
         qrCodeUrl={qrCodeUrl}
         loanExtension={Number(profileData?.loan_extension || 0)}
         showExport
       />
-    )}
     </div>
   );
 }

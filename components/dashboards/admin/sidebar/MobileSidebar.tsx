@@ -1,25 +1,41 @@
 "use client";
-import React, { useContext } from "react";
+
+import { useContext } from "react";
+import { Session } from "next-auth";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { Cancel01Icon } from "@hugeicons/core-free-icons";
+
 import { CommonDashboardContext } from "@/providers/StateContext";
 import Sidebar from "./Sidebar";
-import { Session } from "next-auth"; 
 
 const MobileSideBar = ({ dashboard, session }: { dashboard: string; session: Session }) => {
   const { showSidebar, setShowSidebar } = useContext(CommonDashboardContext);
+
   return (
     <div
       onClick={() => setShowSidebar(false)}
-      className={` fixed sm:hidden left-0 top-0 w-full h-screen transform ease-in-out duration-300  bg-[rgba(0,0,0,0.4)] z-[9999] ${
-        showSidebar ? " translate-x-0" : "-translate-x-full"
+      className={`fixed inset-0 z-[9999] bg-black/40 transition-opacity duration-200 lg:hidden ${
+        showSidebar ? "opacity-100" : "pointer-events-none opacity-0"
       }`}
     >
       <div
-        onClick={(e) => {
-          e.stopPropagation();
-        }}
-        className="  w-3/5 bg-white h-full  font-bold px-3 text-black overflow-auto scrollbar-hide"
+        onClick={(e) => e.stopPropagation()}
+        className={`h-full w-[17rem] max-w-[80%] bg-white transition-transform duration-200 ${
+          showSidebar ? "translate-x-0" : "-translate-x-full"
+        }`}
       >
-        <Sidebar dashboard={dashboard}  />
+        <button
+          onClick={() => setShowSidebar(false)}
+          aria-label="Close menu"
+          className="absolute right-3 top-3 rounded-md p-2 text-slate-500 hover:bg-slate-100"
+        >
+          <HugeiconsIcon icon={Cancel01Icon} size={20} strokeWidth={1.8} />
+        </button>
+
+        <Sidebar
+          dashboard={dashboard}
+          user={{ name: session?.user?.name, email: session?.user?.email }}
+        />
       </div>
     </div>
   );

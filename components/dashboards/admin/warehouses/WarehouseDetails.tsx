@@ -1,6 +1,5 @@
 'use client';
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { EditWarehouseDialog } from './EditWarehouseDialog';
@@ -34,39 +33,39 @@ export function WarehouseDetails({ warehouse, token }: WarehouseDetailsProps) {
         </div>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Warehouse Information</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
+      <div className="border border-slate-200 bg-white">
+        <div className="border-b border-slate-200 px-4 py-3">
+          <p className="text-[13px] font-semibold uppercase tracking-wide text-slate-600">Warehouse Information</p>
+        </div>
+        <div className="space-y-4 p-4">
           <div>
-            <h3 className="text-sm font-medium text-gray-500">Address</h3>
+            <h3 className="text-sm font-medium text-slate-500">Address</h3>
             <p>{warehouse.address}</p>
           </div>
           <div>
-            <h3 className="text-sm font-medium text-gray-500">City</h3>
+            <h3 className="text-sm font-medium text-slate-500">City</h3>
             <p>{warehouse.city}</p>
           </div>
           <div>
-            <h3 className="text-sm font-medium text-gray-500">Country</h3>
+            <h3 className="text-sm font-medium text-slate-500">Country</h3>
             <p>{warehouse.country}</p>
           </div>
           <div>
-            <h3 className="text-sm font-medium text-gray-500">Created At</h3>
+            <h3 className="text-sm font-medium text-slate-500">Created At</h3>
             <p>{new Date(warehouse.createdAt).toLocaleString()}</p>
           </div>
           <div>
-            <h3 className="text-sm font-medium text-gray-500">Last Updated</h3>
+            <h3 className="text-sm font-medium text-slate-500">Last Updated</h3>
             <p>{new Date(warehouse.updatedAt).toLocaleString()}</p>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Inventory</CardTitle>
-        </CardHeader>
-        <CardContent>
+      <div className="border border-slate-200 bg-white">
+        <div className="border-b border-slate-200 px-4 py-3">
+          <p className="text-[13px] font-semibold uppercase tracking-wide text-slate-600">Inventory</p>
+        </div>
+        <div className="p-4">
           {warehouse.inventories.length > 0 ? (
             <div className="space-y-4">
               {/* Render inventory items here */}
@@ -74,8 +73,8 @@ export function WarehouseDetails({ warehouse, token }: WarehouseDetailsProps) {
           ) : (
             <p>No inventory items found for this warehouse.</p>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       <div className="flex justify-end">
         <Button asChild variant="outline">

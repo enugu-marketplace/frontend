@@ -4,7 +4,8 @@ import { authOptions } from "@/lib/auth";
 import axios from "axios";
 import { UserDetails } from "@/components/dashboards/admin/UserDetails";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { ArrowLeft01Icon } from "@hugeicons/core-free-icons";
 
 export default async function UserPage({ params }: { params: Promise<{ userId: string }> }) {
   const { userId } = await params; // ✅ await params here
@@ -12,24 +13,21 @@ export default async function UserPage({ params }: { params: Promise<{ userId: s
   const session = await getServerSession(authOptions);
   
   if (!session?.user || session.user.role !== "super_admin") {
-    redirect("/auth/signin");
+    redirect('/admin-login?callbackUrl=/admin-dashboard');
   }
 
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   if (!uuidRegex.test(userId)) {
     return (
-      <div className="container py-6">
-        <div className="p-4 rounded-lg bg-red-50 border border-red-200">
-          <div className="text-red-600 font-medium">Invalid User ID</div>
-          <div className="text-red-500 text-sm mt-1">
-            The user ID format is incorrect
-          </div>
-          <Link href="/admin-dashboard/users">
-            <Button variant="outline" className="mt-4">
-              Back to Users
-            </Button>
-          </Link>
-        </div>
+      <div className="border-l-4 border-red-500 bg-red-50 px-4 py-3">
+        <p className="text-sm font-medium text-red-900">Invalid user ID</p>
+        <p className="mt-1 text-[13px] text-red-700">That ID is not in the expected format.</p>
+        <Link
+          href="/admin-dashboard/users"
+          className="mt-3 inline-block h-9 rounded-sm border border-red-300 bg-white px-4 text-[13px] font-medium leading-9 text-red-700 hover:bg-red-50"
+        >
+          Back to users
+        </Link>
       </div>
     );
   }
@@ -50,20 +48,22 @@ export default async function UserPage({ params }: { params: Promise<{ userId: s
     const userData = response.data.data || response.data;
 
     return (
-      <div className="container py-6">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-2xl font-bold">User Details</h1>
-            <p className="text-sm text-gray-500">
-              Manage user account and view activity
-            </p>
-          </div>
-          <div className="flex space-x-2">
-            <Link href="/admin-dashboard/users">
-              <Button variant="outline">Back to Users</Button>
-            </Link>
-          </div>
+      <div className="space-y-5">
+        <Link
+          href="/admin-dashboard/users"
+          className="inline-flex items-center gap-1.5 text-[13px] text-slate-500 hover:text-brand-700"
+        >
+          <HugeiconsIcon icon={ArrowLeft01Icon} size={15} strokeWidth={2} />
+          Back to users
+        </Link>
+
+        <div>
+          <h1 className="text-xl font-semibold text-slate-900">User details</h1>
+          <p className="mt-1 text-sm text-slate-600">
+            Account, purchasing unit and order activity for this staff member.
+          </p>
         </div>
+
         <UserDetails userData={userData} token={session.user.token} />
       </div>
     );
@@ -75,7 +75,7 @@ export default async function UserPage({ params }: { params: Promise<{ userId: s
       if (error.response?.status === 404) {
         errorMessage = "User not found";
       } else if (error.response?.status === 401) {
-        redirect("/auth/signin");
+        redirect('/admin-login?callbackUrl=/admin-dashboard');
       } else {
         errorMessage = error.response?.data?.message || error.message;
       }
@@ -84,16 +84,15 @@ export default async function UserPage({ params }: { params: Promise<{ userId: s
     }
 
     return (
-      <div className="container py-6">
-        <div className="p-4 rounded-lg bg-red-50 border border-red-200">
-          <div className="text-red-600 font-medium">Error loading user</div>
-          <div className="text-red-500 text-sm mt-1">{errorMessage}</div>
-          <Link href="/admin-dashboard/users">
-            <Button variant="outline" className="mt-4">
-              Back to Users
-            </Button>
-          </Link>
-        </div>
+      <div className="border-l-4 border-red-500 bg-red-50 px-4 py-3">
+        <p className="text-sm font-medium text-red-900">Could not load this user</p>
+        <p className="mt-1 text-[13px] text-red-700">{errorMessage}</p>
+        <Link
+          href="/admin-dashboard/users"
+          className="mt-3 inline-block h-9 rounded-sm border border-red-300 bg-white px-4 text-[13px] font-medium leading-9 text-red-700 hover:bg-red-50"
+        >
+          Back to users
+        </Link>
       </div>
     );
   }

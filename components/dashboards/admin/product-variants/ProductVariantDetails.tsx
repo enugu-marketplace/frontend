@@ -1,6 +1,5 @@
 'use client';
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -48,11 +47,11 @@ export function ProductVariantDetails({ variant, token }: ProductVariantDetailsP
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Variant Image</CardTitle>
-          </CardHeader>
-          <CardContent>
+        <div className="border border-slate-200 bg-white">
+          <div className="border-b border-slate-200 px-4 py-3">
+            <p className="text-[13px] font-semibold uppercase tracking-wide text-slate-600">Variant Image</p>
+          </div>
+          <div className="p-4">
             <div className="relative h-64 w-full">
               <Image
                 src={variant.image || '/placeholder-product.jpg'}
@@ -61,50 +60,50 @@ export function ProductVariantDetails({ variant, token }: ProductVariantDetailsP
                 className="object-cover rounded-lg"
               />
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Variant Information</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
+        <div className="border border-slate-200 bg-white">
+          <div className="border-b border-slate-200 px-4 py-3">
+            <p className="text-[13px] font-semibold uppercase tracking-wide text-slate-600">Variant Information</p>
+          </div>
+          <div className="space-y-4 p-4">
             <div>
-              <h3 className="text-sm font-medium text-gray-500">SKU</h3>
+              <h3 className="text-sm font-medium text-slate-500">SKU</h3>
               <p>{variant.sku}</p>
             </div>
             <div>
-              <h3 className="text-sm font-medium text-gray-500">Product</h3>
+              <h3 className="text-sm font-medium text-slate-500">Product</h3>
               <p>{variant.product.name}</p>
             </div>
             <div>
-              <h3 className="text-sm font-medium text-gray-500">Price</h3>
+              <h3 className="text-sm font-medium text-slate-500">Price</h3>
               <p>{formatCurrency(variant.price, variant.currency)}</p>
             </div>
             <div>
-              <h3 className="text-sm font-medium text-gray-500">Net Weight</h3>
+              <h3 className="text-sm font-medium text-slate-500">Net Weight</h3>
               <p>{variant.netWeight} kg</p>
             </div>
             {variant.attribute && (
               <div>
-                <h3 className="text-sm font-medium text-gray-500">Attribute</h3>
+                <h3 className="text-sm font-medium text-slate-500">Attribute</h3>
                 <p>{variant.attribute}</p>
               </div>
             )}
             <div>
-              <h3 className="text-sm font-medium text-gray-500">Expiry Date</h3>
+              <h3 className="text-sm font-medium text-slate-500">Expiry Date</h3>
               <p>{formatDate(variant.expiryDate)}</p>
             </div>
             <div>
-              <h3 className="text-sm font-medium text-gray-500">Created At</h3>
+              <h3 className="text-sm font-medium text-slate-500">Created At</h3>
               <p>{new Date(variant.createdAt).toLocaleString()}</p>
             </div>
             <div>
-              <h3 className="text-sm font-medium text-gray-500">Last Updated</h3>
+              <h3 className="text-sm font-medium text-slate-500">Last Updated</h3>
               <p>{new Date(variant.updatedAt).toLocaleString()}</p>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
 
       <div className="flex justify-end">

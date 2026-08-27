@@ -1,30 +1,23 @@
-import { IconType } from "react-icons";
-import { GrMapLocation, GrTransaction } from "react-icons/gr";
-import { RiHome5Line } from "react-icons/ri";
-import { FaOpencart } from "react-icons/fa";
-import { TbReorder } from "react-icons/tb";
-import { MdOutlineProductionQuantityLimits, MdOutlineSettings } from "react-icons/md";
+import type { IconSvgElement } from "@hugeicons/react";
+import {
+  DashboardSquare01Icon,
+  ShoppingBasket01Icon,
+  FavouriteIcon,
+  PackageIcon,
+  Location01Icon,
+} from "@hugeicons/core-free-icons";
 
 export interface UserSideBarType {
-    path: string;
-    icon?: IconType;
-    name: string;
-    dynamicPath?: string; // Add this new optional field
+  path: string;
+  icon?: IconSvgElement;
+  name: string;
+  dynamicPath?: string;
 }
 
 export const UserSideBar: UserSideBarType[] = [
-    { path: "", name: "Dashboard", icon: RiHome5Line },
-    { 
-      path: "products", 
-      name: "Products", 
-      icon: MdOutlineProductionQuantityLimits
-    },
-    { 
-      path: "wishlists", 
-      name: "Wishlist", 
-      icon: FaOpencart
-    },
-    { path: "orders", name: "Orders", icon: TbReorder },
-    //  { path: "addresses", name: "Address", icon: GrMapLocation },
-    //  { path: "user-settings", name: "Settings", icon: MdOutlineSettings },
+  { path: "", name: "Overview", icon: DashboardSquare01Icon },
+  { path: "products", name: "Products", icon: ShoppingBasket01Icon },
+  { path: "wishlists", name: "Wishlist", icon: FavouriteIcon },
+  { path: "orders", name: "Orders", icon: PackageIcon },
+  // { path: "addresses", name: "Address", icon: Location01Icon },
 ];

@@ -3,11 +3,10 @@
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { useInView } from 'react-intersection-observer';
 import axios from 'axios';
-import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
 import { useEffect, useMemo } from 'react';
 import Link from 'next/link';
+import { HugeiconsIcon } from '@hugeicons/react';
+import { Loading03Icon, ShoppingBasket01Icon } from '@hugeicons/core-free-icons';
 import Image from 'next/image';
 import { EditProductVariantDialog } from './EditProductVariantDialog';
 import { DeleteProductVariantDialog } from './DeleteProductVariantDialog';
@@ -86,120 +85,141 @@ export function ProductVariantsList({ token }: { token: string }) {
   };
 
   return (
-    <div className="py-6">
+    <div className="space-y-4">
       {status === 'pending' ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[...Array(6)].map((_, i) => (
-            <Card key={i}>
-              <Skeleton className="h-48 w-full rounded-t-lg" />
-              <CardContent className="space-y-2 pt-4">
-                <Skeleton className="h-6 w-3/4" />
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-4 w-1/2" />
-                <Skeleton className="h-4 w-1/2" />
-              </CardContent>
-            </Card>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {[...Array(8)].map((_, i) => (
+            <div key={i} className="border border-slate-200 bg-white">
+              <div className="aspect-square w-full animate-pulse bg-slate-100" />
+              <div className="space-y-2 p-3">
+                <div className="h-3.5 w-4/5 animate-pulse rounded bg-slate-100" />
+                <div className="h-3 w-2/5 animate-pulse rounded bg-slate-100" />
+              </div>
+            </div>
           ))}
         </div>
       ) : status === 'error' ? (
-        <div>Error: {(error as Error).message}</div>
+        <div className="border-l-4 border-red-500 bg-red-50 px-4 py-3 text-sm text-red-900">
+          Could not load variants: {(error as Error).message}
+        </div>
+      ) : variants.length === 0 ? (
+        <div className="border border-slate-200 bg-white px-6 py-14 text-center">
+          <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-400">
+            <HugeiconsIcon icon={ShoppingBasket01Icon} size={24} strokeWidth={1.5} />
+          </span>
+          <p className="mt-3 text-sm font-medium text-slate-800">No variants yet</p>
+        </div>
       ) : (
         <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {variants.map((variant) => (
-              <Card key={variant.id} className="hover:shadow-lg transition-shadow w-[300px]">
-                <CardHeader className="p-0">
-                  <div className="relative h-48 w-full">
+              <div key={variant.id} className="flex flex-col border border-slate-200 bg-white">
+                <div className="relative aspect-square w-full">
+                  {variant.image ? (
                     <Image
-                      src={variant.image || '/placeholder-product.jpg'}
+                      src={variant.image}
                       alt={variant.name}
                       fill
-                      className="object-cover rounded-t-lg"
-                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                      sizes="(max-width: 640px) 100vw, (max-width: 1280px) 33vw, 25vw"
+                      className="object-contain p-3"
+                    />
+                  ) : (
+                    <span className="flex h-full w-full items-center justify-center bg-slate-50 text-slate-300">
+                      <HugeiconsIcon icon={ShoppingBasket01Icon} size={28} strokeWidth={1.3} />
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex flex-1 flex-col border-t border-slate-100 p-3">
+                  <p className="text-[13px] font-medium text-slate-900">{variant.name}</p>
+                  <p className="mt-0.5 truncate text-[12px] text-slate-500">
+                    {variant.product.name}
+                  </p>
+
+                  <p className="mt-2 text-base font-semibold text-slate-900">
+                    {formatCurrency(variant.price, variant.currency)}
+                  </p>
+
+                  <dl className="mt-2 space-y-1 text-[12px]">
+                    <div className="flex justify-between gap-2">
+                      <dt className="text-slate-500">Net weight</dt>
+                      <dd className="text-slate-800">{variant.netWeight} kg</dd>
+                    </div>
+                    <div className="flex justify-between gap-2">
+                      <dt className="text-slate-500">SKU</dt>
+                      <dd className="truncate font-mono text-slate-800">{variant.sku || '-'}</dd>
+                    </div>
+                  </dl>
+
+                  {variant.attribute && (
+                    <div className="mt-2 border-t border-slate-100 pt-2 text-[12px]">
+                      {(() => {
+                        try {
+                          // Handle both stringified JSON and already-parsed objects
+                          const attributes =
+                            typeof variant.attribute === 'string'
+                              ? JSON.parse(variant.attribute)
+                              : variant.attribute;
+
+                          if (
+                            attributes &&
+                            typeof attributes === 'object' &&
+                            !Array.isArray(attributes)
+                          ) {
+                            return Object.entries(attributes).map(([key, value]) => (
+                              <div key={key} className="flex justify-between gap-2">
+                                <span className="capitalize text-slate-500">{key}</span>
+                                <span className="truncate text-slate-800">{String(value)}</span>
+                              </div>
+                            ));
+                          }
+                          return <span className="text-slate-600">{String(variant.attribute)}</span>;
+                        } catch (e) {
+                          return <span className="text-slate-600">{String(variant.attribute)}</span>;
+                        }
+                      })()}
+                    </div>
+                  )}
+
+                  <div className="mt-3 flex items-center gap-2">
+                    <Link
+                      href={`/admin-dashboard/product-variants/${variant.id}`}
+                      className="flex h-9 flex-1 items-center justify-center rounded-sm border border-slate-300 text-[13px] font-medium text-slate-700 hover:border-brand-600 hover:text-brand-700"
+                    >
+                      View details
+                    </Link>
+
+                    <EditProductVariantDialog
+                      variant={variant}
+                      token={token}
+                      onSuccess={() => window.location.reload()}
+                    />
+                    <DeleteProductVariantDialog
+                      variantId={variant.id}
+                      token={token}
+                      onSuccess={() => window.location.reload()}
                     />
                   </div>
-                </CardHeader>
-                <CardContent className="pt-4">
-                  <h3 className="font-semibold text-lg">{variant.name}</h3>
-                  <p className="text-sm text-gray-600">
-                    <span className="font-medium">Product:</span> {variant.product.name}
-                  </p>
-                  <p className="text-sm text-gray-600">
-                    <span className="font-medium">Price:</span> {formatCurrency(variant.price, variant.currency)}
-                  </p>
-                  <p className="text-sm text-gray-600">
-                    <span className="font-medium">Net Weight:</span> {variant.netWeight} kg
-                  </p>
-                 
-                   
-{variant.attribute && (
-  <div className="text-sm text-gray-600">
-    <span className="font-medium">Attributes:</span>
-    <div className="mt-1">
-      {(() => {
-        try {
-          // Handle both stringified JSON and already-parsed objects
-          const attributes = typeof variant.attribute === 'string' 
-            ? JSON.parse(variant.attribute) 
-            : variant.attribute;
-          
-          // Ensure we have an object before trying to render
-          if (attributes && typeof attributes === 'object' && !Array.isArray(attributes)) {
-            return Object.entries(attributes).map(([key, value]) => (
-              <div key={key} className="flex gap-1">
-                <span className="font-medium capitalize">{key}:</span>
-                <span>{String(value)}</span>
+                </div>
               </div>
-            ));
-          }
-          return <span className="ml-1">{String(variant.attribute)}</span>;
-        } catch (e) {
-          return <span className="ml-1">{String(variant.attribute)}</span>;
-        }
-      })()}
-    </div>
-  </div>
-)}
-               
-                  <p className="text-sm text-gray-600">
-                    <span className="font-medium">SKU:</span> {variant.sku}
-                  </p>
-                </CardContent>
-                <CardFooter className="flex justify-between gap-2">
-                  <Link href={`/admin-dashboard/product-variants/${variant.id}`} className="w-full">
-                    <Button variant="outline" className="w-full">
-                      View Details
-                    </Button>
-                  </Link>
-                  <div className="flex gap-2">
-                    <EditProductVariantDialog 
-                      variant={variant} 
-                      token={token} 
-                      onSuccess={() => window.location.reload()} 
-                    />
-                    <DeleteProductVariantDialog 
-                      variantId={variant.id} 
-                      token={token} 
-                      onSuccess={() => window.location.reload()} 
-                    />
-                  </div>
-                </CardFooter>
-              </Card>
             ))}
           </div>
 
-          <div ref={ref} className="h-10 flex items-center justify-center mt-6">
+          <div ref={ref} className="flex justify-center py-2">
             {isFetchingNextPage ? (
-              <div className="flex items-center space-x-2">
-                <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-                <span>Loading more...</span>
-              </div>
+              <span className="flex items-center gap-2 text-[13px] text-slate-500">
+                <HugeiconsIcon icon={Loading03Icon} size={15} strokeWidth={2} className="animate-spin" />
+                Loading more variants
+              </span>
             ) : hasNextPage ? (
-              <Button variant="ghost" onClick={() => fetchNextPage()}>
-                Load More
-              </Button>
+              <button
+                onClick={() => fetchNextPage()}
+                className="h-9 rounded-sm border border-slate-300 px-4 text-[13px] font-medium text-slate-700 hover:border-brand-600 hover:text-brand-700"
+              >
+                Show more
+              </button>
             ) : (
-              <p className="text-sm text-gray-500">No more variants to load</p>
+              <p className="text-[13px] text-slate-500">All variants loaded.</p>
             )}
           </div>
         </>

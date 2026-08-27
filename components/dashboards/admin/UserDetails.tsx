@@ -5,10 +5,10 @@ import axios from "axios";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Loader2 } from "lucide-react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { Loading03Icon } from "@hugeicons/core-free-icons";
 import Link from "next/link";
 import { UserWithRelations } from "@/types/index";
 import { useEffect, useState } from "react";
@@ -103,15 +103,15 @@ export function UserDetails({ userData, token }: UserDetailsProps) {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-        <span className="ml-2 text-gray-600">Loading user data...</span>
+        <HugeiconsIcon icon={Loading03Icon} size={28} strokeWidth={2} className="animate-spin text-brand-700" />
+        <span className="ml-2 text-slate-600">Loading user data...</span>
       </div>
     );
   }
 
   if (isError && !user) {
     return (
-      <div className="p-4 rounded-lg bg-red-50 border border-red-200">
+      <div className="border-l-4 border-red-500 bg-red-50 px-4 py-3">
         <div className="text-red-600 font-medium">Error loading user</div>
         <div className="text-red-500 text-sm mt-1">
           {error instanceof Error ? error.message : "Unknown error"}
@@ -137,10 +137,10 @@ export function UserDetails({ userData, token }: UserDetailsProps) {
   return (
     <div className="space-y-6">
       {/* Basic Info Card */}
-      <Card>
-        <CardHeader className="border-b">
+      <div className="border border-slate-200 bg-white">
+        <div className="border-b border-slate-200 px-4 py-3">
           <div className="flex justify-between items-center">
-            <CardTitle>User Information</CardTitle>
+            <p className="text-[13px] font-semibold uppercase tracking-wide text-slate-600">User Information</p>
             <div className="flex space-x-2">
                <EditUserDialog 
                 user={currentUser} 
@@ -158,106 +158,106 @@ export function UserDetails({ userData, token }: UserDetailsProps) {
               </Button>
             </div>
           </div>
-        </CardHeader>
-        <CardContent className="pt-6">
+        </div>
+        <div className="p-4">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <div className="space-y-2">
-              <p className="text-sm font-medium text-gray-500">Full Name</p>
+              <p className="text-sm font-medium text-slate-500">Full Name</p>
               <p className="font-medium">
                 {displayUser.firstname} {displayUser.lastname}
               </p>
             </div>
             
             <div className="space-y-2">
-              <p className="text-sm font-medium text-gray-500">Employee ID</p>
+              <p className="text-sm font-medium text-slate-500">Employee ID</p>
               <p className="font-mono">{displayUser.employee_id || "N/A"}</p>
             </div>
 
             <div className="space-y-2">
-              <p className="text-sm font-medium text-gray-500">PSN</p>
+              <p className="text-sm font-medium text-slate-500">PSN</p>
               <p className="font-mono">{displayUser.verification_id || "N/A"}</p>
             </div>
             
             <div className="space-y-2">
-              <p className="text-sm font-medium text-gray-500">Email</p>
-              <p className="text-blue-600 hover:underline">{displayUser.email}</p>
+              <p className="text-sm font-medium text-slate-500">Email</p>
+              <p className="text-brand-700 hover:underline">{displayUser.email}</p>
             </div>
             
             <div className="space-y-2">
-              <p className="text-sm font-medium text-gray-500">Phone</p>
+              <p className="text-sm font-medium text-slate-500">Phone</p>
               <p>{displayUser.phone || "N/A"}</p>
             </div>
             
             <div className="space-y-2">
-              <p className="text-sm font-medium text-gray-500">Government Entity</p>
+              <p className="text-sm font-medium text-slate-500">Government Entity</p>
               <p className="capitalize">{displayUser.government_entity || "N/A"}</p>
             </div>
             
             <div className="space-y-2">
-              <p className="text-sm font-medium text-gray-500">Account Status</p>
+              <p className="text-sm font-medium text-slate-500">Account Status</p>
               <Badge variant={displayUser.isActive ? "default" : "destructive"}>
                 {displayUser.isActive ? "Active" : "Suspended"}
               </Badge>
             </div>
             
             <div className="space-y-2">
-              <p className="text-sm font-medium text-gray-500">Member Since</p>
+              <p className="text-sm font-medium text-slate-500">Member Since</p>
               <p>{formatDate(displayUser.createdAt)}</p>
             </div>
             
             <div className="space-y-2">
-              <p className="text-sm font-medium text-gray-500">Last Updated</p>
+              <p className="text-sm font-medium text-slate-500">Last Updated</p>
               <p>{formatDate(displayUser.updatedAt)}</p>
             </div>
             
             <div className="space-y-2">
-              <p className="text-sm font-medium text-gray-500">Role</p>
+              <p className="text-sm font-medium text-slate-500">Role</p>
               <Badge variant="secondary" className="capitalize">
                 {displayUser.role}
               </Badge>
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* Financial Information Card */}
-      <Card>
-        <CardHeader className="border-b">
-          <CardTitle>Financial Information</CardTitle>
-        </CardHeader>
-        <CardContent className="pt-6">
+      <div className="border border-slate-200 bg-white">
+        <div className="border-b border-slate-200 px-4 py-3">
+          <p className="text-[13px] font-semibold uppercase tracking-wide text-slate-600">Financial Information</p>
+        </div>
+        <div className="p-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="space-y-2">
-              <p className="text-sm font-medium text-gray-500">Monthly Salary</p>
-              <p className="font-medium text-green-700">
+              <p className="text-sm font-medium text-slate-500">Monthly Salary</p>
+              <p className="font-medium text-brand-700">
                 {formatCurrency(displayUser.salary_per_month || 0)}
               </p>
             </div>
             
             <div className="space-y-2">
-              <p className="text-sm font-medium text-gray-500">Loan Unit</p>
+              <p className="text-sm font-medium text-slate-500">Loan Unit</p>
               <p className="font-medium">
                 {formatCurrency(displayUser.loan_unit || 0)}
               </p>
             </div>
             
             <div className="space-y-2">
-              <p className="text-sm font-medium text-gray-500">Loan Collected</p>
+              <p className="text-sm font-medium text-slate-500">Loan Collected</p>
               <p className="font-medium text-red-700">
                 {formatCurrency(displayUser.loan_amount_collected || 0)}
               </p>
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* Address Card */}
       {displayUser.addresses?.length > 0 && (
-        <Card>
-          <CardHeader className="border-b">
-            <CardTitle>Address Information</CardTitle>
-          </CardHeader>
-          <CardContent className="pt-6">
+        <div className="border border-slate-200 bg-white">
+          <div className="border-b border-slate-200 px-4 py-3">
+            <p className="text-[13px] font-semibold uppercase tracking-wide text-slate-600">Address Information</p>
+          </div>
+          <div className="p-4">
             {displayUser.addresses.map((address: unknown) => {
               // Type guard for address
               if (
@@ -286,39 +286,39 @@ export function UserDetails({ userData, token }: UserDetailsProps) {
                   <div key={typedAddress.id} className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div className="space-y-2">
-                        <p className="text-sm font-medium text-gray-500">Label</p>
+                        <p className="text-sm font-medium text-slate-500">Label</p>
                         <p className="capitalize">{typedAddress.label}</p>
                       </div>
                       
                       <div className="space-y-2">
-                        <p className="text-sm font-medium text-gray-500">Default Address</p>
+                        <p className="text-sm font-medium text-slate-500">Default Address</p>
                         <Badge variant={typedAddress.isDefault ? "default" : "outline"}>
                           {typedAddress.isDefault ? "Yes" : "No"}
                         </Badge>
                       </div>
                       
                       <div className="space-y-2">
-                        <p className="text-sm font-medium text-gray-500">Street</p>
+                        <p className="text-sm font-medium text-slate-500">Street</p>
                         <p>{typedAddress.street}</p>
                       </div>
                       
                       <div className="space-y-2">
-                        <p className="text-sm font-medium text-gray-500">City</p>
+                        <p className="text-sm font-medium text-slate-500">City</p>
                         <p>{typedAddress.city}</p>
                       </div>
                       
                       <div className="space-y-2">
-                        <p className="text-sm font-medium text-gray-500">State</p>
+                        <p className="text-sm font-medium text-slate-500">State</p>
                         <p>{typedAddress.state}</p>
                       </div>
                       
                       <div className="space-y-2">
-                        <p className="text-sm font-medium text-gray-500">Country</p>
+                        <p className="text-sm font-medium text-slate-500">Country</p>
                         <p>{typedAddress.country}</p>
                       </div>
                       
                       <div className="space-y-2">
-                        <p className="text-sm font-medium text-gray-500">Zip Code</p>
+                        <p className="text-sm font-medium text-slate-500">Zip Code</p>
                         <p>{typedAddress.zipCode}</p>
                       </div>
                     </div>
@@ -328,38 +328,38 @@ export function UserDetails({ userData, token }: UserDetailsProps) {
               }
               return null;
             })}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
 
       {/* Orders Card */}
       {displayUser.orders?.length > 0 && (
-        <Card>
-          <CardHeader className="border-b">
-            <CardTitle>Order History ({displayUser.orders.length})</CardTitle>
-          </CardHeader>
-          <CardContent className="pt-6">
+        <div className="border border-slate-200 bg-white">
+          <div className="border-b border-slate-200 px-4 py-3">
+            <p className="text-[13px] font-semibold uppercase tracking-wide text-slate-600">Order History ({displayUser.orders.length})</p>
+          </div>
+          <div className="p-4">
             <div className="space-y-4">
               {displayUser.orders.map((order: any) => (
                 <div key={order.id} className="border rounded-lg p-4">
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                     <div className="space-y-1">
-                      <p className="text-sm font-medium text-gray-500">Order ID</p>
+                      <p className="text-sm font-medium text-slate-500">Order ID</p>
                       <p className="font-mono text-sm">{order.id}</p>
                     </div>
                     
                     <div className="space-y-1">
-                      <p className="text-sm font-medium text-gray-500">Date</p>
+                      <p className="text-sm font-medium text-slate-500">Date</p>
                       <p>{formatDate(order.placedAt)}</p>
                     </div>
                     
                     <div className="space-y-1">
-                      <p className="text-sm font-medium text-gray-500">Amount</p>
+                      <p className="text-sm font-medium text-slate-500">Amount</p>
                       <p>{formatCurrency(order.totalAmount)}</p>
                     </div>
                     
                     <div className="space-y-1">
-                      <p className="text-sm font-medium text-gray-500">Status</p>
+                      <p className="text-sm font-medium text-slate-500">Status</p>
                       <div className="flex items-center">
                         <Badge
                           variant={
@@ -386,22 +386,22 @@ export function UserDetails({ userData, token }: UserDetailsProps) {
                 </div>
               ))}
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
 
       {/* Wishlist Card */}
       {displayUser.wishlist?.length > 0 && (
-        <Card>
-          <CardHeader className="border-b">
-            <CardTitle>Wishlist ({displayUser.wishlist.length})</CardTitle>
-          </CardHeader>
-          <CardContent className="pt-6">
+        <div className="border border-slate-200 bg-white">
+          <div className="border-b border-slate-200 px-4 py-3">
+            <p className="text-[13px] font-semibold uppercase tracking-wide text-slate-600">Wishlist ({displayUser.wishlist.length})</p>
+          </div>
+          <div className="p-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
               {displayUser.wishlist.map((item: any) => (
                 <div key={item.id} className="border rounded-lg p-4">
                   <p className="font-medium">Product ID: {item.productId}</p>
-                  <p className="text-sm text-gray-500">
+                  <p className="text-sm text-slate-500">
                     Added: {formatDate(item.addedAt)}
                   </p>
                   <Button variant="outline" size="sm" className="mt-2">
@@ -410,21 +410,21 @@ export function UserDetails({ userData, token }: UserDetailsProps) {
                 </div>
               ))}
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
 
       {/* Danger Zone Card */}
-      <Card className="border-red-200">
-        <CardHeader className="border-b border-red-200 bg-red-50">
-          <CardTitle className="text-red-600">Danger Zone</CardTitle>
-        </CardHeader>
-        <CardContent className="pt-6">
+      <div className="border border-red-200 bg-white">
+        <div className="border-b border-red-200 bg-red-50 px-4 py-3">
+          <p className="text-[13px] font-semibold uppercase tracking-wide text-red-700">Danger Zone</p>
+        </div>
+        <div className="p-4">
           <div className="space-y-4">
             <div className="flex justify-between items-center">
               <div>
                 <p className="font-medium">Reset Password</p>
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-slate-500">
                   Send password reset link to user's email
                 </p>
               </div>
@@ -440,7 +440,7 @@ export function UserDetails({ userData, token }: UserDetailsProps) {
                 <p className="font-medium">
                   {displayUser.isActive ? "Suspend Account" : "Activate Account"}
                 </p>
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-slate-500">
                   {displayUser.isActive
                     ? "Temporarily disable this user's access"
                     : "Reactivate this user's account"}
@@ -448,7 +448,7 @@ export function UserDetails({ userData, token }: UserDetailsProps) {
               </div>
               <Button 
                 variant="outline" 
-                className={displayUser.isActive ? "text-red-600 hover:text-red-700" : "text-green-600 hover:text-green-700"}
+                className={displayUser.isActive ? "text-red-600 hover:text-red-700" : "text-green-600 hover:text-brand-700"}
               >
                 {displayUser.isActive ? "Suspend" : "Activate"}
               </Button>
@@ -459,7 +459,7 @@ export function UserDetails({ userData, token }: UserDetailsProps) {
             <div className="flex justify-between items-center">
               <div>
                 <p className="font-medium">Delete Account</p>
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-slate-500">
                   Permanently delete this user account
                 </p>
               </div>
@@ -471,8 +471,8 @@ export function UserDetails({ userData, token }: UserDetailsProps) {
               </Button>
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
       <DeleteUserDialog
         userId={userId}
         userName={`${currentUser.firstname} ${currentUser.lastname}`}

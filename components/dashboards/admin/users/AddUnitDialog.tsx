@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { PlusCircle } from "lucide-react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { PlusSignCircleIcon } from "@hugeicons/core-free-icons";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -80,7 +81,7 @@ export function AddUnitDialog({ user, triggerLabel = "Add Unit", onAddUnit }: Ad
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button variant="outline" size="sm" className="gap-2 text-[12px]">
-          <PlusCircle className="h-4 w-4" />
+          <HugeiconsIcon icon={PlusSignCircleIcon} size={16} strokeWidth={1.8} />
           {triggerLabel}
         </Button>
       </DialogTrigger>

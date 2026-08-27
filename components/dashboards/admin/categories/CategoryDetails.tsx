@@ -1,6 +1,5 @@
 'use client';
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -36,25 +35,25 @@ export function CategoryDetails({ category, token }: CategoryDetailsProps) {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Category Information</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
+        <div className="border border-slate-200 bg-white">
+          <div className="border-b border-slate-200 px-4 py-3">
+            <p className="text-[13px] font-semibold uppercase tracking-wide text-slate-600">Category Information</p>
+          </div>
+          <div className="space-y-4 p-4">
             <div>
-              <h3 className="text-sm font-medium text-gray-500">Slug</h3>
+              <h3 className="text-sm font-medium text-slate-500">Slug</h3>
               <p>{category.slug}</p>
             </div>
             <div>
-              <h3 className="text-sm font-medium text-gray-500">Parent Category</h3>
+              <h3 className="text-sm font-medium text-slate-500">Parent Category</h3>
               <p>{category.parent?.name || 'None'}</p>
             </div>
             <div>
-              <h3 className="text-sm font-medium text-gray-500">Subcategories</h3>
+              <h3 className="text-sm font-medium text-slate-500">Subcategories</h3>
               <div className="flex flex-wrap gap-2 mt-1">
                 {category.children.length > 0 ? (
                   category.children.map((child: any) => (
-                    <span key={child.id} className="text-xs bg-gray-100 px-2 py-1 rounded">
+                    <span key={child.id} className="text-xs bg-slate-100 px-2 py-1 rounded">
                       {child.name}
                     </span>
                   ))
@@ -63,14 +62,14 @@ export function CategoryDetails({ category, token }: CategoryDetailsProps) {
                 )}
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Products ({category.products.length})</CardTitle>
-          </CardHeader>
-          <CardContent>
+        <div className="border border-slate-200 bg-white">
+          <div className="border-b border-slate-200 px-4 py-3">
+            <p className="text-[13px] font-semibold uppercase tracking-wide text-slate-600">Products ({category.products.length})</p>
+          </div>
+          <div className="p-4">
             {category.products.length > 0 ? (
               <div className="space-y-4">
                 {category.products.map((product: any) => (
@@ -85,7 +84,7 @@ export function CategoryDetails({ category, token }: CategoryDetailsProps) {
                     </div>
                     <div>
                       <h3 className="font-medium">{product.name}</h3>
-                      <p className="text-sm text-gray-600 line-clamp-1">{product.description}</p>
+                      <p className="text-sm text-slate-600 line-clamp-1">{product.description}</p>
                     </div>
                   </div>
                 ))}
@@ -93,8 +92,8 @@ export function CategoryDetails({ category, token }: CategoryDetailsProps) {
             ) : (
               <p>No products in this category</p>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
 
       <div className="flex justify-end">

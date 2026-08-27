@@ -1,141 +1,81 @@
 "use client";
 
-import { useContext, useEffect, useState } from "react";
-import Image from "next/image";
-import { usePathname } from "next/navigation";
-import { FaPowerOff } from "react-icons/fa";
-import { CommonDashboardContext } from "@/providers/StateContext";
-//import { Session } from "next-auth";
-//import { useSession } from "next-auth/react";
-import { useConversion } from "@/data-access/conversion";
+import { useContext } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { Logout01Icon } from "@hugeicons/core-free-icons";
+
+import { CommonDashboardContext } from "@/providers/StateContext";
+import Logo from "@/components/brand/Logo";
 import { UserSideBarComponent } from "./SidebarNav";
-import { Skeleton } from "@/components/ui/skeleton";
-import { useSession } from "next-auth/react";
+
+export interface SidebarUser {
+  name?: string | null;
+  email?: string | null;
+}
 
 interface SidebarProps {
   dashboard: string;
-  // session: user;
+  /** Comes from the server session in the dashboard layout, so the sidebar has
+   *  nothing to load and never flashes a skeleton on navigation. */
+  user?: SidebarUser;
 }
 
-const Sidebar = ({ dashboard }: SidebarProps) => {
-  const { setConfirmLogout } = useContext(CommonDashboardContext);
-    const { data: clientSession, status } = useSession();
-    const [serverUser, setServerUser] = useState(null);
-    const [isLoading, setIsLoading] = useState(true);
-  // const { data: session, status } = useSession();
-  const { makeSubstring } = useConversion();
+function getInitials(name?: string | null) {
+  if (!name) return "?";
+  return name
+    .split(" ")
+    .filter(Boolean)
+    .map((part) => part[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+}
+
+const Sidebar = ({ dashboard, user }: SidebarProps) => {
+  const { setConfirmLogout, setShowSidebar } = useContext(CommonDashboardContext);
   const pathname = usePathname();
-
-   useEffect(() => {
-      fetch("/api/auth/session")
-        .then((res) => res.json())
-        .then(setServerUser)
-        .catch(console.error)
-        .finally(() => setIsLoading(false));
-    }, []);
-
-  // const getInitials = (name: string | null | undefined) => {
-  //   if (!name) return "";
-  //   const names = name.trim().split(" ");
-  //   return names
-  //     .map((n) => n.charAt(0))
-  //     .slice(0, 2)
-  //     .join("")
-  //     .toUpperCase();
-  // };
-
-  const getInitials = (name?: string | null) => {
-    if (!name) return "?";
-    const parts = name.split(' ').filter(Boolean);
-    return parts.map(n => n[0]).join('').toUpperCase();
-  };
 
   const pathSegments = pathname?.split("/") || [];
   const findpath = pathSegments.length === 2 ? "" : pathSegments[2];
 
-  if (status === "loading") {
-    return (
-      <div className="flex flex-col w-[240px] font-header gap-12 p-4">
-        <Skeleton className="h-8 w-[160px]" />
-        <div className="space-y-4">
-          {[...Array(5)].map((_, i) => (
-            <Skeleton key={i} className="h-8 w-full" />
-          ))}
-        </div>
-        <Skeleton className="w-full h-[120px] mt-16 rounded-lg" />
-      </div>
-    );
-  }
-
-  const user = clientSession?.user || serverUser;
-
-  
-
-  
-
-  if (!user) {
-    return (
-      <div className="flex flex-col w-[240px] font-header gap-12 p-4">
-        <div className="text-red-500">Not authenticated</div>
-      </div>
-    );
-  }
-
   return (
-    <div className="flex flex-col w-[240px] font-header gap-12 p-3">
-      {/* Logo */}
-      <div>
-        <Link href="/" className="flex items-center">
-        <Image
-                      src={"/logo2.png"}
-                      alt="logo"
-                      width={50}
-                      height={50}
-                      className="text-[20px] text-green-600"
-                    />
-          <h1 className="ml-2 text-black font-bold text-[14px]">
-            Enugu Market Food Scheme
-          </h1>
+    <div className="flex h-full w-full flex-col">
+      <div className="border-b border-slate-200 px-4 py-4">
+        <Link href="/" className="inline-block" onClick={() => setShowSidebar(false)}>
+          <Logo idSuffix="sidebar" markClassName="h-9 w-9" />
         </Link>
       </div>
 
-      {/* Dashboard Navigation */}
-      {dashboard === "user" && <UserSideBarComponent findpath={findpath} />}
+      <div className="flex-1 overflow-y-auto px-3 py-4">
+        <p className="px-3 pb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+          Menu
+        </p>
+        {dashboard === "user" && <UserSideBarComponent findpath={findpath} />}
+      </div>
 
-      {/* User Profile & Logout */}
-      <div className="w-full h-[120px] bg-green-800 mt-16 flex items-end justify-center relative rounded-lg">
-        <div className="w-3/5 h-[120px] left-1/2 text-black rounded-xl transform -translate-x-1/2 bg-gray-100 absolute gap-1 -translate-y-1/2 flex flex-col items-center justify-center">
-          {user && (
-            // <Image
-            //   src={session.user.image}
-            //   alt="User profile"
-            //   width={40}
-            //   height={40}
-            //   className="rounded-full"
-            //   priority
-            // />
-          
-            <div className="w-12 h-12 flex items-center justify-center bg-orange-700 text-white rounded-full">
-              {getInitials(user.name)}
-            </div>
-          )}
-          <p className="text-[10px] font-bold">
-            {makeSubstring(user.name || "User", 8)}
-          </p>
-          {user.email && (
-            <p className="text-[8px] text-gray-500">
-              {makeSubstring(user.email, 12)}
+      <div className="border-t border-slate-200 p-3">
+        <div className="flex items-center gap-3 rounded-md px-2 py-2">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-50 text-[13px] font-semibold text-brand-800 ring-1 ring-brand-200">
+            {getInitials(user?.name)}
+          </span>
+          <div className="min-w-0">
+            <p className="truncate text-[13px] font-medium text-slate-800">
+              {user?.name || "Staff member"}
             </p>
-          )}
+            {user?.email && (
+              <p className="truncate text-[11px] text-slate-500">{user.email}</p>
+            )}
+          </div>
         </div>
+
         <button
           onClick={() => setConfirmLogout(true)}
-          className="text-white mb-6 flex gap-1 items-center text-[12px] cursor-pointer"
-          aria-label="Logout"
+          className="mt-1 flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-[13px] font-medium text-slate-600 hover:bg-red-50 hover:text-red-700"
         >
-          <span>logout</span>
-          <FaPowerOff />
+          <HugeiconsIcon icon={Logout01Icon} size={17} strokeWidth={1.8} />
+          Sign out
         </button>
       </div>
     </div>
