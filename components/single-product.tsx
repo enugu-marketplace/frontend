@@ -350,7 +350,6 @@ export default function ProductDetailPage({
 
   const handleComplianceUploadSuccess = () => {
     setShowComplianceDialog(false);
-    toast.success("Compliance form submitted successfully!");
     
     // CRITICAL FIX: Immediately update the UI to show pending status
     // This prevents the "DENIED" banner from showing while waiting for API refetch

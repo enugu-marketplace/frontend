@@ -726,7 +726,6 @@ const ProductInstance = () => {
         })
         .then((response) => {
           setComplianceData(response.data.data);
-          toast.success("Compliance form submitted successfully!");
         })
         .catch((error) => {
           console.error("Failed to fetch compliance data:", error);
