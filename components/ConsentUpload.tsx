@@ -78,16 +78,26 @@ export default function ConsentUpload({
         }
       );
 
-      if (response.data.success) {
-        toast.success('Compliance document uploaded successfully!');
-        setSelectedFile(null);
-        setPreviewUrl(null);
-        setIsUploading(false);
-        onUploadSuccess();
-        onClose();
-      } else {
-        toast.error(response.data.message || 'Upload failed');
+      // A successful upload comes back as { message, data } with no `success`
+      // flag, and axios has already thrown for any non-2xx status. Only an
+      // explicit failure envelope counts as a failure here — checking for a
+      // truthy `success` made every successful upload look like an error.
+      const payload = response.data ?? {};
+      const failed =
+        payload.success === false ||
+        payload.status === 'error' ||
+        payload.status === 'failed';
+
+      if (failed) {
+        toast.error(payload.message || 'Upload failed');
+        return;
       }
+
+      toast.success('Compliance document uploaded successfully!');
+      setSelectedFile(null);
+      setPreviewUrl(null);
+      onUploadSuccess();
+      onClose();
     } catch (error: any) {
       console.error('Upload error:', error);
       toast.error(error.response?.data?.message || 'Failed to upload compliance document');
