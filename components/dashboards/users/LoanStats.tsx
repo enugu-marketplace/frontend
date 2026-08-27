@@ -4,6 +4,8 @@ import { useQuery } from '@tanstack/react-query';
 import axios from 'axios';
 import { useEffect, useRef } from 'react';
 import { toast } from 'sonner';
+import { HugeiconsIcon } from '@hugeicons/react';
+import { Wallet01Icon, Alert01Icon, ChartLineData01Icon } from '@hugeicons/core-free-icons';
 
 interface ComplianceData {
   id: string;
@@ -74,6 +76,7 @@ export function LoanStats({
     new Intl.NumberFormat('en-NG', {
       style: 'currency',
       currency: 'NGN',
+      maximumFractionDigits: 0,
     }).format(v || 0);
 
   useEffect(() => {
@@ -85,128 +88,112 @@ export function LoanStats({
     }
   }, [hasSwitchedToExtension]);
 
-  if (isLoading) return null;
+  if (isLoading) {
+    return (
+      <>
+        {[0, 1].map((i) => (
+          <div key={i} className="border border-slate-200 bg-white p-5">
+            <div className="h-3 w-24 animate-pulse rounded bg-slate-100" />
+            <div className="mt-3 h-7 w-32 animate-pulse rounded bg-slate-100" />
+            <div className="mt-4 h-1.5 w-full animate-pulse rounded bg-slate-100" />
+          </div>
+        ))}
+      </>
+    );
+  }
 
   return (
     <>
       {loanExtension > 0 && (
-        <div className="md:col-span-2 lg:col-span-3 sticky top-20 z-10 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 shadow-sm">
-          <p className="text-sm font-semibold text-amber-900">
-            Warning: You&apos;re currently using your extension credit.
-          </p>
-          <p className="text-sm text-amber-800 mt-1">
-            {format(loanExtension)} will be deducted from next month&apos;s allocation.
-          </p>
+        <div className="flex items-start gap-2.5 border-l-4 border-amber-500 bg-amber-50 px-4 py-3 md:col-span-2 lg:col-span-3">
+          <HugeiconsIcon
+            icon={Alert01Icon}
+            size={18}
+            strokeWidth={1.8}
+            className="mt-0.5 shrink-0 text-amber-600"
+          />
+          <div className="text-sm text-amber-900">
+            <p className="font-medium">You are spending from your extension credit.</p>
+            <p className="mt-0.5 text-amber-800">
+              {format(loanExtension)} will be deducted from next month&apos;s allocation.
+            </p>
+          </div>
         </div>
       )}
 
-      {/* Available Credit */}
-      <div className="bg-white p-6 rounded-xl border shadow-sm flex justify-between">
-        <div className="flex-1">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-medium text-gray-600">
-              Available Credit
-            </h3>
-            
+      {/* Available credit */}
+      <div className="border border-slate-200 bg-white p-5">
+        <div className="flex items-start justify-between">
+          <div>
+            <p className="text-[13px] text-slate-500">Available to spend</p>
+            <p className="mt-1.5 text-2xl font-semibold text-slate-900">{format(available)}</p>
           </div>
+          <span className="flex h-10 w-10 items-center justify-center rounded-md bg-brand-50 text-brand-700">
+            <HugeiconsIcon icon={Wallet01Icon} size={20} strokeWidth={1.8} />
+          </span>
+        </div>
 
-          <p className="text-2xl font-bold text-gray-900 mt-2">
-            {format(available)}
-          </p>
-
-          <p className="text-xs text-green-600 mt-1">
-            Spendable now
-          </p>
-
-          <div className="mt-3">
-            <p className="text-xs text-gray-500 mb-1">Purchasing Unit</p>
-            <div className="h-1.5 bg-gray-200 rounded-full">
+        <div className="mt-5 space-y-3">
+          <div>
+            <div className="flex items-baseline justify-between text-[12px]">
+              <span className="text-slate-600">Purchasing unit</span>
+              <span className="text-slate-500">
+                {format(loanUnit)} of {format(totalPurchasingUnit)}
+              </span>
+            </div>
+            <div className="mt-1.5 h-1.5 w-full rounded-full bg-slate-100">
               <div
-                className={`${loanUnit <= 0 ? 'bg-red-500' : 'bg-green-500'} h-full rounded-full`}
+                className={`h-full rounded-full ${loanUnit <= 0 ? 'bg-red-500' : 'bg-brand-600'}`}
                 style={{ width: `${purchasingUnitProgress}%` }}
               />
             </div>
-            <p className="text-xs text-gray-400 mt-1">
-              {format(loanUnit)} remaining of {format(totalPurchasingUnit)}
-            </p>
+          </div>
 
-            <p className="text-xs text-gray-500 mt-3 mb-1">Extension Buffer</p>
-            <div className="h-1.5 bg-gray-200 rounded-full">
+          <div>
+            <div className="flex items-baseline justify-between text-[12px]">
+              <span className="text-slate-600">Extension buffer</span>
+              <span className="text-slate-500">
+                {format(extensionRemaining)} of {format(maxExtensionLimit)}
+              </span>
+            </div>
+            <div className="mt-1.5 h-1.5 w-full rounded-full bg-slate-100">
               <div
-                className="h-full bg-yellow-500 rounded-full"
+                className="h-full rounded-full bg-amber-500"
                 style={{ width: `${extensionProgress}%` }}
               />
             </div>
-            <p className="text-xs text-gray-400 mt-1">
-              {format(extensionRemaining)} remaining of {format(maxExtensionLimit)}
-            </p>
           </div>
-        </div>
-
-        <div className="h-11 w-11 rounded-lg bg-orange-50 flex items-center justify-center ml-4">
-          <svg
-            className="h-6 w-6 text-orange-600"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={2.5}
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2"
-            />
-          </svg>
         </div>
       </div>
 
-      {/* Extension Buffer */}
-      <div className="bg-white p-6 rounded-xl border shadow-sm flex justify-between mt-4">
-        <div className="flex-1">
-          <h3 className="text-sm font-medium text-gray-600">
-            Extension Buffer
-          </h3>
+      {/* This month */}
+      <div className="border border-slate-200 bg-white p-5">
+        <div className="flex items-start justify-between">
+          <div>
+            <p className="text-[13px] text-slate-500">Spent this month</p>
+            <p className="mt-1.5 text-2xl font-semibold text-slate-900">{format(loanTaken)}</p>
+          </div>
+          <span className="flex h-10 w-10 items-center justify-center rounded-md bg-slate-100 text-slate-600">
+            <HugeiconsIcon icon={ChartLineData01Icon} size={20} strokeWidth={1.8} />
+          </span>
+        </div>
 
-          <p className="text-2xl font-bold text-gray-900 mt-2">
-            {format(extensionRemaining)}
-          </p>
-
-          <p className="text-xs text-yellow-700 mt-1">
-            Extension buffer remaining
-          </p>
-
-          <p className="text-xs text-gray-500 mt-1">
-            Purchasing unit used this month: {format(purchasingUnitUsed)}
-          </p>
-
-          <p className="text-xs text-gray-500 mt-1">
-            Total borrowed this month: {format(loanTaken)}
-          </p>
-
+        <dl className="mt-5 space-y-2 text-[13px]">
+          <div className="flex justify-between gap-3">
+            <dt className="text-slate-500">Purchasing unit used</dt>
+            <dd className="font-medium text-slate-800">{format(purchasingUnitUsed)}</dd>
+          </div>
+          <div className="flex justify-between gap-3">
+            <dt className="text-slate-500">Extension used</dt>
+            <dd className="font-medium text-slate-800">{format(loanExtension)}</dd>
+          </div>
           {user?.government_entity && (
-            <p className="text-xs text-gray-500 mt-2">
-              <strong>Entity:</strong> {user.government_entity}
-            </p>
+            <div className="flex justify-between gap-3 border-t border-slate-100 pt-2">
+              <dt className="text-slate-500">Entity</dt>
+              <dd className="truncate font-medium text-slate-800">{user.government_entity}</dd>
+            </div>
           )}
-
-          {/* {user?.salary_per_month && (
-            <p className="text-xs text-gray-500">
-              <strong>Salary:</strong> {format(user.salary_per_month)}
-            </p>
-          )} */}
-        </div>
-
-        <div className="h-11 w-11 rounded-lg bg-green-50 flex items-center justify-center ml-4">
-          <svg
-            className="h-6 w-6 text-green-600"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={2.5}
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9 14l6-6" />
-          </svg>
-        </div>
+        </dl>
       </div>
     </>
   );

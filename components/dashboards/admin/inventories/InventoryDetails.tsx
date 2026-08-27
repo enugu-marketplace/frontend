@@ -1,6 +1,5 @@
 'use client';
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { EditInventoryDialog } from './EditInventoryDialog';
@@ -36,41 +35,41 @@ export function InventoryDetails({ inventory, token }: InventoryDetailsProps) {
         </div>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Inventory Information</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
+      <div className="border border-slate-200 bg-white">
+        <div className="border-b border-slate-200 px-4 py-3">
+          <p className="text-[13px] font-semibold uppercase tracking-wide text-slate-600">Inventory Information</p>
+        </div>
+        <div className="space-y-4 p-4">
           <div>
-            <h3 className="text-sm font-medium text-gray-500">Variant ID</h3>
+            <h3 className="text-sm font-medium text-slate-500">Variant ID</h3>
             <p>{inventory.variantId}</p>
           </div>
           <div>
-            <h3 className="text-sm font-medium text-gray-500">Quantity</h3>
+            <h3 className="text-sm font-medium text-slate-500">Quantity</h3>
             <p>{inventory.quantity}</p>
           </div>
           <div>
-            <h3 className="text-sm font-medium text-gray-500">Low Stock Level</h3>
+            <h3 className="text-sm font-medium text-slate-500">Low Stock Level</h3>
             <p>{inventory.lowStockLevel}</p>
           </div>
           <div>
-            <h3 className="text-sm font-medium text-gray-500">Batch Number</h3>
+            <h3 className="text-sm font-medium text-slate-500">Batch Number</h3>
             <p>{inventory.batchNumber}</p>
           </div>
           <div>
-            <h3 className="text-sm font-medium text-gray-500">Warehouse</h3>
+            <h3 className="text-sm font-medium text-slate-500">Warehouse</h3>
             <p>{inventory.warehouseName} (ID: {inventory.warehouseId})</p>
           </div>
           <div>
-            <h3 className="text-sm font-medium text-gray-500">Created At</h3>
+            <h3 className="text-sm font-medium text-slate-500">Created At</h3>
             <p>{new Date(inventory.createdAt).toLocaleString()}</p>
           </div>
           <div>
-            <h3 className="text-sm font-medium text-gray-500">Last Updated</h3>
+            <h3 className="text-sm font-medium text-slate-500">Last Updated</h3>
             <p>{new Date(inventory.updatedAt).toLocaleString()}</p>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       <div className="flex justify-end">
         <Button asChild variant="outline">

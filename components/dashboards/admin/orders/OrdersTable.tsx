@@ -17,9 +17,7 @@ import {
 } from "@/components/ui/table";
 import { Order } from "@/types/order";
 import { formatCurrency } from "@/lib/utils";
-import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -28,13 +26,16 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { HugeiconsIcon } from "@hugeicons/react";
 import {
-  Eye,
-  ChevronLeft,
-  ChevronRight,
-  ChevronsLeft,
-  ChevronsRight,
-} from "lucide-react";
+  EyeIcon,
+  ArrowLeft01Icon,
+  ArrowRight01Icon,
+  ArrowLeftDoubleIcon,
+  ArrowRightDoubleIcon,
+  Alert01Icon,
+} from "@hugeicons/core-free-icons";
+import { cn } from "@/lib/utils";
 import { useState, useEffect, useMemo } from "react";
 import OrdersFilter from "../OrdersFilter";
 
@@ -189,8 +190,10 @@ export const columns: ColumnDef<Order>[] = [
     header: "Customer Name",
 
     // ⭐ Derive value safely
-    accessorFn: (row) =>
-      `${row.user?.firstname ?? ""} ${row.user?.lastname ?? ""}`,
+    accessorFn: (row) => {
+      const fullName = `${row.user?.firstname ?? ""} ${row.user?.lastname ?? ""}`.trim();
+      return fullName || "N/A";
+    },
 
     cell: ({ getValue }) => {
       const name = getValue<string>();
@@ -223,24 +226,18 @@ export const columns: ColumnDef<Order>[] = [
       const status = row.original.orderStatus;
 
       return (
-        <Badge
-          className={
+        <span
+          className={cn(
+            "rounded-sm px-2 py-1 text-[11px] font-medium capitalize ring-1",
             status === "DELIVERED"
-              ? "bg-green-700"
+              ? "bg-brand-50 text-brand-800 ring-brand-200"
               : status === "CANCELLED"
-              ? ""
-              : "bg-yellow-600"
-          }
-          variant={
-            status === "DELIVERED"
-              ? "secondary"
-              : status === "CANCELLED"
-              ? "destructive"
-              : "default"
-          }
+              ? "bg-red-50 text-red-700 ring-red-200"
+              : "bg-amber-50 text-amber-800 ring-amber-200"
+          )}
         >
-          {status}
-        </Badge>
+          {status.toLowerCase()}
+        </span>
       );
     },
   },
@@ -248,12 +245,13 @@ export const columns: ColumnDef<Order>[] = [
   {
     id: "actions",
     cell: ({ row }) => (
-      <Button asChild size="sm" variant="ghost">
-        <Link href={`/admin-dashboard/orders/${row.original.id}`}>
-          <Eye className="h-4 w-4" />
-          <span className="sr-only">View</span>
-        </Link>
-      </Button>
+      <Link
+        href={`/admin-dashboard/orders/${row.original.id}`}
+        title="View order"
+        className="flex h-8 w-8 items-center justify-center rounded-sm border border-slate-300 text-slate-600 hover:border-brand-600 hover:text-brand-700"
+      >
+        <HugeiconsIcon icon={EyeIcon} size={16} strokeWidth={1.8} />
+      </Link>
     ),
   },
 ];
@@ -295,8 +293,11 @@ export default function OrdersTable({ orders }: OrdersTableProps) {
     },
   });
 
+  const pageIndex = table.getState().pagination.pageIndex;
+  const pageSize = table.getState().pagination.pageSize;
+
   return (
-    <div>
+    <div className="space-y-4">
       {/* Filter Component */}
       <OrdersFilter
         orders={uniqueOrders}
@@ -305,46 +306,52 @@ export default function OrdersTable({ orders }: OrdersTableProps) {
       />
 
       {isApril2026Selected && (
-        <div className="mb-4 rounded-lg border border-amber-300 bg-amber-50 p-4 text-amber-900">
-          <p className="text-sm font-semibold">April 2026 reconciliation notice</p>
-          <p className="mt-1 text-sm">
-            Some April 2026 orders were placed manually outside the platform. They are not present in the
+        <div className="border-l-4 border-amber-500 bg-amber-50 px-4 py-3">
+          <p className="flex items-center gap-2 text-sm font-medium text-amber-900">
+            <HugeiconsIcon icon={Alert01Icon} size={17} strokeWidth={1.8} />
+            April 2026 reconciliation notice
+          </p>
+          <p className="mt-1 text-[13px] leading-6 text-amber-800">
+            Some April 2026 orders were placed manually outside the platform. They are not in the
             system order list and should be reconciled separately.
           </p>
-          <div className="mt-3 flex items-center gap-3 text-sm">
+          <div className="mt-3 flex flex-wrap items-center gap-3 text-[13px] text-amber-900">
             <span>
-              Manual records: {APRIL_2026_MANUAL_ORDERS.length} | Total: {formatCurrency(APRIL_2026_MANUAL_TOTAL)}
+              {APRIL_2026_MANUAL_ORDERS.length} manual records &middot;{" "}
+              {formatCurrency(APRIL_2026_MANUAL_TOTAL)}
             </span>
             <Dialog>
               <DialogTrigger asChild>
-                <Button size="sm" variant="outline">View manual April orders</Button>
+                <button className="h-8 rounded-sm border border-amber-300 bg-white px-3 text-[13px] font-medium text-amber-900 hover:bg-amber-100">
+                  View manual records
+                </button>
               </DialogTrigger>
-              <DialogContent className="w-[96vw] max-w-[1500px] max-h-[88vh]">
+              <DialogContent className="max-h-[88vh] w-[96vw] max-w-[1500px]">
                 <DialogHeader>
-                  <DialogTitle>Manual April 2026 Orders</DialogTitle>
+                  <DialogTitle>Manual April 2026 orders</DialogTitle>
                   <DialogDescription>
-                    These records were supplied as manual entries due to the April incident and are shown for
+                    Supplied as manual entries after the April incident, shown here for
                     reconciliation.
                   </DialogDescription>
                 </DialogHeader>
-                <div className="max-h-[72vh] overflow-auto border rounded-md">
+                <div className="max-h-[72vh] overflow-auto border border-slate-200">
                   <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>S/N</TableHead>
-                        <TableHead>Verification ID</TableHead>
-                        <TableHead>Name</TableHead>
-                        <TableHead>Phone</TableHead>
-                        <TableHead>Government Entity</TableHead>
-                        <TableHead>Employee ID</TableHead>
-                        <TableHead>Amount</TableHead>
-                        <TableHead>Narration</TableHead>
-                        <TableHead>Remarks</TableHead>
+                    <TableHeader className="bg-slate-50">
+                      <TableRow className="border-slate-200 hover:bg-transparent">
+                        <TableHead className="text-[12px] uppercase tracking-wide text-slate-600">S/N</TableHead>
+                        <TableHead className="text-[12px] uppercase tracking-wide text-slate-600">Verification ID</TableHead>
+                        <TableHead className="text-[12px] uppercase tracking-wide text-slate-600">Name</TableHead>
+                        <TableHead className="text-[12px] uppercase tracking-wide text-slate-600">Phone</TableHead>
+                        <TableHead className="text-[12px] uppercase tracking-wide text-slate-600">Entity</TableHead>
+                        <TableHead className="text-[12px] uppercase tracking-wide text-slate-600">Employee ID</TableHead>
+                        <TableHead className="text-[12px] uppercase tracking-wide text-slate-600">Amount</TableHead>
+                        <TableHead className="text-[12px] uppercase tracking-wide text-slate-600">Narration</TableHead>
+                        <TableHead className="text-[12px] uppercase tracking-wide text-slate-600">Remarks</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {APRIL_2026_MANUAL_ORDERS.map((manualOrder) => (
-                        <TableRow key={manualOrder.sn}>
+                        <TableRow key={manualOrder.sn} className="border-slate-100 text-[13px]">
                           <TableCell>{manualOrder.sn}</TableCell>
                           <TableCell>{manualOrder.verificationId}</TableCell>
                           <TableCell>{manualOrder.name}</TableCell>
@@ -365,127 +372,106 @@ export default function OrdersTable({ orders }: OrdersTableProps) {
         </div>
       )}
 
-      <Table>
-        <TableHeader>
-          {table.getHeaderGroups().map((headerGroup) => (
-            <TableRow key={headerGroup.id}>
-              {headerGroup.headers.map((header) => (
-                <TableHead key={header.id}>
-                  {flexRender(
-                    header.column.columnDef.header,
-                    header.getContext()
-                  )}
-                </TableHead>
-              ))}
-            </TableRow>
-          ))}
-        </TableHeader>
-
-        <TableBody>
-          {table.getRowModel().rows.length ? (
-            table.getRowModel().rows.map((row) => (
-              <TableRow key={row.id}>
-                {row.getVisibleCells().map((cell) => (
-                  <TableCell key={cell.id}>
-                    {flexRender(
-                      cell.column.columnDef.cell,
-                      cell.getContext()
-                    )}
-                  </TableCell>
+      <div className="overflow-x-auto border border-slate-200 bg-white">
+        <Table>
+          <TableHeader className="bg-slate-50">
+            {table.getHeaderGroups().map((headerGroup) => (
+              <TableRow key={headerGroup.id} className="border-slate-200 hover:bg-transparent">
+                {headerGroup.headers.map((header) => (
+                  <TableHead
+                    key={header.id}
+                    className="whitespace-nowrap text-[12px] font-semibold uppercase tracking-wide text-slate-600"
+                  >
+                    {flexRender(header.column.columnDef.header, header.getContext())}
+                  </TableHead>
                 ))}
               </TableRow>
-            ))
-          ) : (
-            <TableRow>
-              <TableCell
-                colSpan={columns.length}
-                className="h-24 text-center"
-              >
-                No orders found
-              </TableCell>
-            </TableRow>
-          )}
-        </TableBody>
-      </Table>
+            ))}
+          </TableHeader>
 
-      {/* Pagination Controls */}
-      <div className="flex items-center justify-between px-2 mt-4">
-        <div className="flex-1 text-sm text-muted-foreground">
-          Showing {table.getRowModel().rows.length} of{" "}
-          {filteredOrders.length} orders
+          <TableBody>
+            {table.getRowModel().rows.length ? (
+              table.getRowModel().rows.map((row) => (
+                <TableRow key={row.id} className="border-slate-100 text-[13px] hover:bg-slate-50">
+                  {row.getVisibleCells().map((cell) => (
+                    <TableCell key={cell.id} className="py-3">
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={columns.length} className="h-24 text-center text-slate-500">
+                  No orders match these filters
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </div>
+
+      {/* Pagination */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-[13px] text-slate-500">
+          Showing {table.getRowModel().rows.length} of {filteredOrders.length} orders
           {filteredOrders.length !== uniqueOrders.length && (
-            <span className="text-blue-600 ml-1">
-              (filtered from {uniqueOrders.length} total)
-            </span>
+            <span className="text-slate-400"> (filtered from {uniqueOrders.length})</span>
           )}
-        </div>
+        </p>
 
-        <div className="flex items-center space-x-6 lg:space-x-8">
-          {/* Rows per page */}
-          <div className="flex items-center space-x-2">
-            <p className="text-sm font-medium">Rows per page</p>
+        <div className="flex items-center gap-3">
+          <select
+            aria-label="Rows per page"
+            value={pageSize}
+            onChange={(e) => table.setPageSize(Number(e.target.value))}
+            className="h-8 rounded-sm border border-slate-300 bg-white px-2 text-[13px] text-slate-700 outline-none focus:border-brand-600"
+          >
+            {[5, 10, 20, 30, 40, 50].map((size) => (
+              <option key={size} value={size}>
+                {size} rows
+              </option>
+            ))}
+          </select>
 
-            <select
-              aria-label="Rows per page"
-              className="h-8 w-[70px] rounded-md border border-input bg-background"
-              value={table.getState().pagination.pageSize}
-              onChange={(e) =>
-                table.setPageSize(Number(e.target.value))
-              }
-            >
-              {[5, 10, 20, 30, 40, 50].map((pageSize) => (
-                <option key={pageSize} value={pageSize}>
-                  {pageSize}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Page info */}
-          <div className="flex w-[120px] items-center justify-center text-sm font-medium">
-            Page {table.getState().pagination.pageIndex + 1} of{" "}
-            {table.getPageCount()}
-          </div>
-
-          {/* Pagination buttons */}
-          <div className="flex items-center space-x-2">
-            <Button
-              variant="outline"
-              className="hidden h-8 w-8 p-0 lg:flex"
+          <div className="flex items-center gap-1">
+            <button
               onClick={() => table.setPageIndex(0)}
               disabled={!table.getCanPreviousPage()}
+              aria-label="First page"
+              className="hidden h-8 w-8 items-center justify-center rounded-sm border border-slate-300 text-slate-600 hover:border-brand-600 hover:text-brand-700 disabled:text-slate-300 lg:flex"
             >
-              <ChevronsLeft className="h-4 w-4" />
-            </Button>
-
-            <Button
-              variant="outline"
-              className="h-8 w-8 p-0"
+              <HugeiconsIcon icon={ArrowLeftDoubleIcon} size={15} strokeWidth={2} />
+            </button>
+            <button
               onClick={() => table.previousPage()}
               disabled={!table.getCanPreviousPage()}
+              aria-label="Previous page"
+              className="flex h-8 w-8 items-center justify-center rounded-sm border border-slate-300 text-slate-600 hover:border-brand-600 hover:text-brand-700 disabled:text-slate-300"
             >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
+              <HugeiconsIcon icon={ArrowLeft01Icon} size={15} strokeWidth={2} />
+            </button>
 
-            <Button
-              variant="outline"
-              className="h-8 w-8 p-0"
+            <span className="px-2 text-[13px] text-slate-600">
+              Page {pageIndex + 1} of {Math.max(1, table.getPageCount())}
+            </span>
+
+            <button
               onClick={() => table.nextPage()}
               disabled={!table.getCanNextPage()}
+              aria-label="Next page"
+              className="flex h-8 w-8 items-center justify-center rounded-sm border border-slate-300 text-slate-600 hover:border-brand-600 hover:text-brand-700 disabled:text-slate-300"
             >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-
-            <Button
-              variant="outline"
-              className="hidden h-8 w-8 p-0 lg:flex"
-              onClick={() =>
-                table.setPageIndex(table.getPageCount() - 1)
-              }
+              <HugeiconsIcon icon={ArrowRight01Icon} size={15} strokeWidth={2} />
+            </button>
+            <button
+              onClick={() => table.setPageIndex(table.getPageCount() - 1)}
               disabled={!table.getCanNextPage()}
+              aria-label="Last page"
+              className="hidden h-8 w-8 items-center justify-center rounded-sm border border-slate-300 text-slate-600 hover:border-brand-600 hover:text-brand-700 disabled:text-slate-300 lg:flex"
             >
-              <ChevronsRight className="h-4 w-4" />
-            </Button>
+              <HugeiconsIcon icon={ArrowRightDoubleIcon} size={15} strokeWidth={2} />
+            </button>
           </div>
         </div>
       </div>

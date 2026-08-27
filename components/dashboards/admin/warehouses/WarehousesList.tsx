@@ -3,11 +3,10 @@
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { useInView } from 'react-intersection-observer';
 import axios from 'axios';
-import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
 import { useEffect, useMemo } from 'react';
 import Link from 'next/link';
+import { HugeiconsIcon } from '@hugeicons/react';
+import { Loading03Icon, WarehouseIcon } from '@hugeicons/core-free-icons';
 import { EditWarehouseDialog } from './EditWarehouseDialog';
 import { DeleteWarehouseDialog } from './DeleteWarehouseDialog';
 
@@ -67,80 +66,96 @@ export function WarehousesList({ token }: { token: string }) {
   }, [inView, hasNextPage, fetchNextPage]);
 
   return (
-    <div className="py-6">
+    <div className="space-y-4">
       {status === 'pending' ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {[...Array(6)].map((_, i) => (
-            <Card key={i}>
-              <CardContent className="space-y-2 pt-4">
-                <Skeleton className="h-6 w-3/4" />
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-4 w-1/2" />
-                <Skeleton className="h-4 w-1/2" />
-                <Skeleton className="h-4 w-1/2" />
-              </CardContent>
-            </Card>
+            <div key={i} className="space-y-2 border border-slate-200 bg-white p-4">
+              <div className="h-4 w-2/3 animate-pulse rounded bg-slate-100" />
+              <div className="h-3 w-full animate-pulse rounded bg-slate-100" />
+              <div className="h-9 w-full animate-pulse rounded bg-slate-100" />
+            </div>
           ))}
         </div>
       ) : status === 'error' ? (
-        <div>Error: {(error as Error).message}</div>
+        <div className="border-l-4 border-red-500 bg-red-50 px-4 py-3 text-sm text-red-900">
+          Could not load warehouses: {(error as Error).message}
+        </div>
+      ) : warehouses.length === 0 ? (
+        <div className="border border-slate-200 bg-white px-6 py-14 text-center">
+          <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-400">
+            <HugeiconsIcon icon={WarehouseIcon} size={24} strokeWidth={1.5} />
+          </span>
+          <p className="mt-3 text-sm font-medium text-slate-800">No warehouses yet</p>
+        </div>
       ) : (
         <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {warehouses.map((warehouse) => (
-              <Card key={warehouse.id} className="hover:shadow-lg transition-shadow">
-                <CardHeader className="pb-2">
-                  <h3 className="font-semibold text-lg">{warehouse.name}</h3>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-gray-600">
-                    <span className="font-medium">Address:</span> {warehouse.address}
-                  </p>
-                  <p className="text-sm text-gray-600">
-                    <span className="font-medium">City:</span> {warehouse.city}
-                  </p>
-                  <p className="text-sm text-gray-600">
-                    <span className="font-medium">Country:</span> {warehouse.country}
-                  </p>
-                  <p className="text-sm text-gray-600">
-                    <span className="font-medium">Created:</span> {new Date(warehouse.createdAt).toLocaleDateString()}
-                  </p>
-                </CardContent>
-                <CardFooter className="flex justify-between gap-2">
-                  <Link href={`/admin-dashboard/warehouse/${warehouse.id}`} className="w-full">
-                    <Button variant="outline" className="w-full">
-                      View Details
-                    </Button>
-                  </Link>
-                  <div className="flex gap-2">
-                    <EditWarehouseDialog 
-                      warehouse={warehouse} 
-                      token={token} 
-                      onSuccess={() => window.location.reload()} 
-                    />
-                    <DeleteWarehouseDialog 
-                      warehouseId={warehouse.id} 
-                      token={token} 
-                      onSuccess={() => window.location.reload()} 
-                    />
+              <div key={warehouse.id} className="flex flex-col border border-slate-200 bg-white">
+                <div className="border-b border-slate-100 px-4 py-3">
+                  <p className="text-sm font-medium text-slate-900">{warehouse.name}</p>
+                </div>
+
+                <dl className="flex-1 space-y-1.5 px-4 py-3 text-[13px]">
+                  <div className="flex justify-between gap-3">
+                    <dt className="text-slate-500">Address</dt>
+                    <dd className="truncate text-slate-800">{warehouse.address || '-'}</dd>
                   </div>
-                </CardFooter>
-              </Card>
+                  <div className="flex justify-between gap-3">
+                    <dt className="text-slate-500">City</dt>
+                    <dd className="truncate text-slate-800">{warehouse.city || '-'}</dd>
+                  </div>
+                  <div className="flex justify-between gap-3">
+                    <dt className="text-slate-500">Country</dt>
+                    <dd className="truncate text-slate-800">{warehouse.country || '-'}</dd>
+                  </div>
+                  <div className="flex justify-between gap-3">
+                    <dt className="text-slate-500">Created</dt>
+                    <dd className="text-slate-800">
+                      {new Date(warehouse.createdAt).toLocaleDateString('en-NG')}
+                    </dd>
+                  </div>
+                </dl>
+
+                <div className="flex items-center gap-2 border-t border-slate-100 p-3">
+                  <Link
+                    href={`/admin-dashboard/warehouse/${warehouse.id}`}
+                    className="flex h-9 flex-1 items-center justify-center rounded-sm border border-slate-300 text-[13px] font-medium text-slate-700 hover:border-brand-600 hover:text-brand-700"
+                  >
+                    View details
+                  </Link>
+
+                  <EditWarehouseDialog
+                    warehouse={warehouse}
+                    token={token}
+                    onSuccess={() => window.location.reload()}
+                  />
+                  <DeleteWarehouseDialog
+                    warehouseId={warehouse.id}
+                    token={token}
+                    onSuccess={() => window.location.reload()}
+                  />
+                </div>
+              </div>
             ))}
           </div>
 
-          <div ref={ref} className="h-10 flex items-center justify-center mt-6">
+          <div ref={ref} className="flex justify-center py-2">
             {isFetchingNextPage ? (
-              <div className="flex items-center space-x-2">
-                <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-                <span>Loading more...</span>
-              </div>
+              <span className="flex items-center gap-2 text-[13px] text-slate-500">
+                <HugeiconsIcon icon={Loading03Icon} size={15} strokeWidth={2} className="animate-spin" />
+                Loading more warehouses
+              </span>
             ) : hasNextPage ? (
-              <Button variant="ghost" onClick={() => fetchNextPage()}>
-                Load More
-              </Button>
+              <button
+                onClick={() => fetchNextPage()}
+                className="h-9 rounded-sm border border-slate-300 px-4 text-[13px] font-medium text-slate-700 hover:border-brand-600 hover:text-brand-700"
+              >
+                Show more
+              </button>
             ) : (
-              <p className="text-sm text-gray-500">No more warehouses to load</p>
+              <p className="text-[13px] text-slate-500">All warehouses loaded.</p>
             )}
           </div>
         </>

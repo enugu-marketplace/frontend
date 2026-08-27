@@ -14,20 +14,21 @@ export default async function AdminUsersPage() {
   }
 
   return (
-    <div className="container py-6 mt-[60px] ">
-      <div className="flex items-center sm:flex-row flex-col justify-between mb-6">
-        <h1 className="text-[18px] font-bold">User Management</h1>
-        <div className="grid md:grid-cols-2 sm:grid-cols-2 grid-cols-1 gap-4">
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-semibold text-slate-900">Users</h1>
+          <p className="mt-1 text-sm text-slate-600">
+            Civil servants enrolled in the scheme, with their purchasing units and balances.
+          </p>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
           <CreateUserDialog token={session.user.token} />
           <UploadUsersDialog token={session.user.token} />
-          
         </div>
-        {/* <div className="grid md:grid-cols-2 sm:grid-cols-2 grid-cols-1 gap-4">
-         
-          <ExportLoansDialog token={session.user.token} />
-          <ExportExternalOrdersDialog token={session.user.token} />
-        </div> */}
       </div>
+
       <UsersDataFetcher />
     </div>
   );

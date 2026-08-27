@@ -3,21 +3,15 @@
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { useInView } from 'react-intersection-observer';
 import axios from 'axios';
-import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import Image from 'next/image';
-import { Skeleton } from '@/components/ui/skeleton';
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Search } from 'lucide-react';
+import { HugeiconsIcon } from '@hugeicons/react';
+import {
+  Search01Icon,
+  Loading03Icon,
+  ShoppingBasket01Icon,
+} from '@hugeicons/core-free-icons';
 
 interface Product {
   id: string;
@@ -200,196 +194,193 @@ export function ProductsList({ token }: { token: string }) {
     return placeholderImages.tomatoes; // default
   };
 
+  const hasFilters =
+    Boolean(searchQuery) || perishableFilter !== 'all' || statusFilter !== 'all';
+
+  const clearFilters = () => {
+    setSearchQuery('');
+    setPerishableFilter('all');
+    setStatusFilter('all');
+    setSortOption('name-asc');
+  };
+
   return (
-    <div className="py-6">
-      {/* Search and Filter Section */}
-      <div className="flex flex-col sm:flex-row gap-4 mb-8">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-          <Input
-            placeholder="Search products by name or description..."
+    <div className="space-y-4">
+      {/* Toolbar */}
+      <div className="flex flex-wrap items-center gap-2 border border-slate-200 bg-white p-3">
+        <div className="relative min-w-0 flex-1 sm:max-w-xs">
+          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+            <HugeiconsIcon icon={Search01Icon} size={16} strokeWidth={1.8} />
+          </span>
+          <input
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
+            placeholder="Search products"
+            className="h-9 w-full rounded-sm border border-slate-300 pl-9 pr-3 text-[13px] outline-none focus:border-brand-600"
           />
         </div>
 
-        <Select onValueChange={setPerishableFilter} value={perishableFilter}>
-          <SelectTrigger className="w-full sm:w-40">
-            <SelectValue placeholder="Perishable" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Types</SelectItem>
-            <SelectItem value="perishable">Perishable</SelectItem>
-            <SelectItem value="non-perishable">Non-Perishable</SelectItem>
-          </SelectContent>
-        </Select>
+        <select
+          value={perishableFilter}
+          onChange={(e) => setPerishableFilter(e.target.value)}
+          className="h-9 rounded-sm border border-slate-300 bg-white px-2 text-[13px] text-slate-700 outline-none focus:border-brand-600"
+        >
+          <option value="all">All types</option>
+          <option value="perishable">Fresh produce</option>
+          <option value="non-perishable">Pantry staples</option>
+        </select>
 
-        <Select onValueChange={setStatusFilter} value={statusFilter}>
-          <SelectTrigger className="w-full sm:w-40">
-            <SelectValue placeholder="Status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Status</SelectItem>
-            <SelectItem value="active">Active</SelectItem>
-            <SelectItem value="inactive">Inactive</SelectItem>
-          </SelectContent>
-        </Select>
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className="h-9 rounded-sm border border-slate-300 bg-white px-2 text-[13px] text-slate-700 outline-none focus:border-brand-600"
+        >
+          <option value="all">All statuses</option>
+          <option value="active">Active</option>
+          <option value="inactive">Inactive</option>
+        </select>
 
-        <Select onValueChange={setSortOption} value={sortOption}>
-          <SelectTrigger className="w-full sm:w-40">
-            <SelectValue placeholder="Sort by" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="name-asc">Name (A-Z)</SelectItem>
-            <SelectItem value="name-desc">Name (Z-A)</SelectItem>
-            <SelectItem value="price-asc">Price (Low to High)</SelectItem>
-            <SelectItem value="price-desc">Price (High to Low)</SelectItem>
-          </SelectContent>
-        </Select>
+        <select
+          value={sortOption}
+          onChange={(e) => setSortOption(e.target.value)}
+          className="h-9 rounded-sm border border-slate-300 bg-white px-2 text-[13px] text-slate-700 outline-none focus:border-brand-600"
+        >
+          <option value="name-asc">Name A-Z</option>
+          <option value="name-desc">Name Z-A</option>
+          <option value="price-asc">Cheapest first</option>
+          <option value="price-desc">Most expensive</option>
+        </select>
+
+        {hasFilters && (
+          <button onClick={clearFilters} className="ml-auto text-[13px] text-brand-700 hover:underline">
+            Clear filters
+          </button>
+        )}
       </div>
 
-      {/* Results count */}
       {filteredProducts.length > 0 && (
-        <div className="text-sm text-gray-600 mb-6">
-          Showing {filteredProducts.length} of {allProducts.length} products
-          {(searchQuery || perishableFilter !== 'all' || statusFilter !== 'all') && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="ml-3"
-              onClick={() => {
-                setSearchQuery('');
-                setPerishableFilter('all');
-                setStatusFilter('all');
-                setSortOption('name-asc');
-              }}
-            >
-              Clear filters
-            </Button>
-          )}
-        </div>
+        <p className="text-[13px] text-slate-600">
+          <span className="font-medium text-slate-900">{filteredProducts.length}</span> of{" "}
+          {allProducts.length} products
+        </p>
       )}
 
       {status === 'pending' ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[...Array(6)].map((_, i) => (
-            <Card key={i}>
-              <Skeleton className="h-48 w-full rounded-t-lg" />
-              <CardContent className="space-y-2 pt-4">
-                <Skeleton className="h-6 w-3/4" />
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-4 w-1/2" />
-              </CardContent>
-            </Card>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {[...Array(8)].map((_, i) => (
+            <div key={i} className="border border-slate-200 bg-white">
+              <div className="aspect-square w-full animate-pulse bg-slate-100" />
+              <div className="space-y-2 p-3">
+                <div className="h-3.5 w-4/5 animate-pulse rounded bg-slate-100" />
+                <div className="h-3 w-2/5 animate-pulse rounded bg-slate-100" />
+              </div>
+            </div>
           ))}
         </div>
       ) : status === 'error' ? (
-        <div>Error: {(error as Error).message}</div>
+        <div className="border-l-4 border-red-500 bg-red-50 px-4 py-3 text-sm text-red-900">
+          Could not load products: {(error as Error).message}
+        </div>
+      ) : filteredProducts.length === 0 ? (
+        <div className="border border-slate-200 bg-white px-6 py-14 text-center">
+          <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-400">
+            <HugeiconsIcon icon={Search01Icon} size={24} strokeWidth={1.5} />
+          </span>
+          <p className="mt-3 text-sm font-medium text-slate-800">No products found</p>
+          <p className="mt-1 text-[13px] text-slate-500">
+            {hasFilters
+              ? 'Try adjusting your search or filters.'
+              : 'Nothing has been added to the catalogue yet.'}
+          </p>
+          {hasFilters && (
+            <button
+              onClick={clearFilters}
+              className="mt-4 h-9 rounded-sm border border-slate-300 px-4 text-[13px] font-medium text-slate-700 hover:border-brand-600 hover:text-brand-700"
+            >
+              Clear filters
+            </button>
+          )}
+        </div>
       ) : (
         <>
-          {filteredProducts.length === 0 ? (
-            <div className="text-center py-12">
-              <div className="bg-gray-100 rounded-lg p-8 max-w-md mx-auto">
-                <Search className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No products found</h3>
-                <p className="text-gray-600 mb-4">
-                  {searchQuery || perishableFilter !== 'all' || statusFilter !== 'all'
-                    ? "Try adjusting your search or filter criteria"
-                    : "No products available at the moment"}
-                </p>
-                {(searchQuery || perishableFilter !== 'all' || statusFilter !== 'all') && (
-                  <Button
-                    onClick={() => {
-                      setSearchQuery('');
-                      setPerishableFilter('all');
-                      setStatusFilter('all');
-                    }}
-                    variant="outline"
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {filteredProducts.map((product, index) => (
+              <article
+                key={product.id}
+                className="flex flex-col border border-slate-200 bg-white transition-colors hover:border-brand-600"
+              >
+                <div className="relative aspect-square w-full">
+                  {product.product_image ? (
+                    <Image
+                      src={product.product_image}
+                      alt={product.name}
+                      fill
+                      sizes="(max-width: 640px) 100vw, (max-width: 1280px) 33vw, 25vw"
+                      className="object-contain p-3"
+                      priority={index < 4}
+                    />
+                  ) : (
+                    <span className="flex h-full w-full items-center justify-center bg-slate-50 text-slate-300">
+                      <HugeiconsIcon icon={ShoppingBasket01Icon} size={30} strokeWidth={1.3} />
+                    </span>
+                  )}
+
+                  <span className="absolute left-2 top-2 rounded-sm bg-white/90 px-2 py-1 text-[11px] font-medium text-slate-600 ring-1 ring-slate-200">
+                    {product.isPerishable ? 'Fresh' : 'Pantry'}
+                  </span>
+
+                  {!product.active && (
+                    <span className="absolute right-2 top-2 rounded-sm bg-red-50 px-2 py-1 text-[11px] font-medium text-red-700 ring-1 ring-red-200">
+                      Inactive
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex flex-1 flex-col border-t border-slate-100 p-3">
+                  <h3 className="line-clamp-2 min-h-10 text-[13px] leading-5 text-slate-800">
+                    {product.name}
+                  </h3>
+
+                  <p className="mt-1.5 text-base font-semibold text-slate-900">
+                    {new Intl.NumberFormat('en-NG', {
+                      style: 'currency',
+                      currency: product.currency || 'NGN',
+                      maximumFractionDigits: 0,
+                    }).format(product.basePrice)}
+                  </p>
+
+                  <Link
+                    href={`/admin-dashboard/products/${product.id}`}
+                    className="mt-3 flex h-9 items-center justify-center rounded-sm border border-slate-300 text-[13px] font-medium text-slate-700 hover:border-brand-600 hover:text-brand-700"
                   >
-                    Clear filters
-                  </Button>
-                )}
-              </div>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredProducts.map((product) => (
-                <Card key={product.id} className="hover:shadow-lg transition-shadow md:w-[300px] w-full">
-                  <CardHeader className="p-0">
-                    <div className="relative mt-6 h-48 w-full">
-                      <Image
-                        src={product.product_image || getProductImage(product.name)}
-                        alt={product.name}
-                        fill
-                        className="object-contain rounded-t-lg"
-                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                        priority={filteredProducts.indexOf(product) < 6}
-                      />
-                      {!product.active && (
-                        <div className="absolute top-2 left-2 bg-red-100 text-red-800 text-xs px-2 py-1 rounded">
-                          Inactive
-                        </div>
-                      )}
-                      <div className="absolute top-2 right-2 bg-gray-100 text-gray-800 text-xs px-2 py-1 rounded">
-                        {product.isPerishable ? 'Perishable' : 'Non-Perishable'}
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="pt-4">
-                    <h3 className="font-semibold text-lg">{product.name}</h3>
-                    <p className="text-sm text-gray-600 line-clamp-2">
-                      {product.description}
-                    </p>
-                    <div className="mt-2">
-                      <span className="font-medium">
-                        {new Intl.NumberFormat('en-NG', {
-                          style: 'currency',
-                          currency: product.currency,
-                        }).format(product.basePrice)}
-                      </span>
-                    </div>
-                    {/* {product.variants.length > 0 && (
-                      <div className="mt-3">
-                        <h4 className="text-sm font-medium">Variants:</h4>
-                        <div className="flex flex-wrap gap-2 mt-1">
-                          {product.variants.map(variant => (
-                            <span 
-                              key={variant.id} 
-                              className="text-xs bg-gray-100 px-2 py-1 rounded"
-                            >
-                              {variant.name}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )} */}
-                  </CardContent>
-                  <CardFooter>
-                    <Link href={`/admin-dashboard/products/${product.id}`} className='w-full'>
-                      <Button variant="outline" className='w-full bg-orange-700 text-white hover:bg-orange-600'>
-                        View Details
-                      </Button>
-                    </Link>
-                  </CardFooter>
-                </Card>
-              ))}
-            </div>
-          )}
+                    Manage product
+                  </Link>
+                </div>
+              </article>
+            ))}
+          </div>
 
           {filteredProducts.length > 0 && (
-            <div ref={ref} className="h-10 flex items-center justify-center mt-6">
+            <div ref={ref} className="flex justify-center py-2">
               {isFetchingNextPage ? (
-                <div className="flex items-center space-x-2">
-                  <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-                  <span>Loading more...</span>
-                </div>
+                <span className="flex items-center gap-2 text-[13px] text-slate-500">
+                  <HugeiconsIcon
+                    icon={Loading03Icon}
+                    size={15}
+                    strokeWidth={2}
+                    className="animate-spin"
+                  />
+                  Loading more products
+                </span>
               ) : hasNextPage ? (
-                <Button variant="ghost" onClick={() => fetchNextPage()}>
-                  Load More
-                </Button>
+                <button
+                  onClick={() => fetchNextPage()}
+                  className="h-9 rounded-sm border border-slate-300 px-4 text-[13px] font-medium text-slate-700 hover:border-brand-600 hover:text-brand-700"
+                >
+                  Show more products
+                </button>
               ) : (
-                <p className="text-sm text-gray-500">No more products to load</p>
+                <p className="text-[13px] text-slate-500">That is the whole catalogue.</p>
               )}
             </div>
           )}

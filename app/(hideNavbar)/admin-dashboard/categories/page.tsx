@@ -3,24 +3,26 @@ import { authOptions } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { CategoriesList } from '@/components/dashboards/admin/categories/CategoriesList';
 import { CreateCategoryDialog } from '@/components/dashboards/admin/categories/CreateCategoryDialog';
-import { Suspense } from 'react';
 
 export default async function AdminCategoriesPage() {
   const session = await getServerSession(authOptions);
   
   if (!session?.user || session.user.role !== 'super_admin') {
-    redirect('/auth/signin');
+    redirect('/admin-login?callbackUrl=/admin-dashboard');
   }
 
   return (
-     <Suspense fallback={<div>Loading...</div>}>
-    <div className="container py-6">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">Categories Management</h1>
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-semibold text-slate-900">Categories</h1>
+          <p className="mt-1 text-sm text-slate-600">Groupings used to organise the product catalogue.</p>
+        </div>
+
         <CreateCategoryDialog token={session.user.token} />
       </div>
+
       <CategoriesList token={session.user.token} />
     </div>
-    </Suspense>
   );
 }

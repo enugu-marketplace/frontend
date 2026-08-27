@@ -3,14 +3,21 @@
 import { useQuery } from "@tanstack/react-query";
 import { ColumnDef, flexRender, getCoreRowModel, getFilteredRowModel, getPaginationRowModel, useReactTable } from "@tanstack/react-table";
 import axios from "axios";
-import { Loader2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Download } from "lucide-react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import {
+  Loading03Icon,
+  ArrowLeft01Icon,
+  ArrowRight01Icon,
+  ArrowLeftDoubleIcon,
+  ArrowRightDoubleIcon,
+  Download01Icon,
+  Search01Icon,
+} from "@hugeicons/core-free-icons";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { UserWithRelations } from "@/types/index";
 import { useState, useMemo } from "react";
 import { AddUnitDialog } from "./AddUnitDialog";
@@ -37,12 +44,30 @@ const columns: ColumnDef<UserWithRelations>[] = [
   // {
   //   accessorKey: "email",
   //   header: "Email",
-  //   cell: ({ row }) => <div className="text-blue-600 hover:underline">{row.getValue("email") || "N/A"}</div>,
+  //   cell: ({ row }) => <div className="text-brand-700 hover:underline">{row.getValue("email") || "N/A"}</div>,
+  // },
+  // {
+  //   accessorKey: "phone",
+  //   header: "Phone",
+  //   cell: ({ row }) => <div className="font-mono">{row.getValue("phone") || "N/A"}</div>,
   // },
   {
     accessorKey: "phone",
     header: "Phone",
-    cell: ({ row }) => <div className="font-mono">{row.getValue("phone") || "N/A"}</div>,
+    cell: ({ row }) => {
+      const phone = row.original.phone;
+      return <div className="font-mono">{phone || "N/A"}</div>;
+    },
+    filterFn: (row, columnId, filterValue) => {
+      // Custom filter function that specifically handles phone numbers
+      const phone = row.original.phone;
+      if (!phone) return false;
+      if (!filterValue) return true;
+      
+      const phoneStr = String(phone).toLowerCase();
+      const searchStr = String(filterValue).toLowerCase();
+      return phoneStr.includes(searchStr);
+    },
   },
   {
     accessorKey: "government_entity",
@@ -55,7 +80,7 @@ const columns: ColumnDef<UserWithRelations>[] = [
     cell: ({ row }) => {
       const amount = parseFloat(row.getValue("salary_per_month") || "0");
       return (
-        <div className="font-medium text-green-700">
+        <div className="font-medium text-brand-700">
           {new Intl.NumberFormat('en-NG', {
             style: 'currency',
             currency: 'NGN'
@@ -71,7 +96,7 @@ const columns: ColumnDef<UserWithRelations>[] = [
       const salary = Number(row.original.salary_per_month || 0);
       const totalPurchasingUnit = salary * 0.3;
       return (
-        <div className="font-medium text-blue-700">
+        <div className="font-medium text-slate-900">
           {new Intl.NumberFormat('en-NG', {
             style: 'currency',
             currency: 'NGN'
@@ -186,7 +211,7 @@ const columns: ColumnDef<UserWithRelations>[] = [
       return (
         <div className="flex items-center gap-2">
           <Link href={`/admin-dashboard/users/${user.id}`} legacyBehavior passHref>
-            <Button variant="outline" size="sm" className="hover:bg-blue-50 text-[12px] hover:text-blue-600">
+            <Button variant="outline" size="sm" className="hover:bg-blue-50 text-[12px] hover:text-brand-700">
               View Details
             </Button>
           </Link>
@@ -406,178 +431,118 @@ export function AdminUsersTable({ initialUsers, token }: AdminUsersTableProps) {
 
   if (isLoading && !users.length) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-        <span className="ml-2 text-gray-600">Loading users...</span>
+      <div className="space-y-3">
+        <div className="h-10 w-full animate-pulse border border-slate-200 bg-slate-50" />
+        <div className="h-64 w-full animate-pulse border border-slate-200 bg-slate-50" />
       </div>
     );
   }
 
   if (isError) {
     return (
-      <div className="p-4 rounded-lg bg-red-50 border border-red-200">
-        <div className="text-red-600 font-medium">Error loading users</div>
-        <div className="text-red-500 text-sm mt-1">
+      <div className="border-l-4 border-red-500 bg-red-50 px-4 py-3">
+        <p className="text-sm font-medium text-red-900">Could not load users</p>
+        <p className="mt-1 text-[13px] text-red-700">
           {error instanceof Error ? error.message : "Unknown error"}
-        </div>
-        <Button
-          variant="outline"
-          className="mt-4 hover:bg-red-50 hover:text-red-600"
+        </p>
+        <button
           onClick={() => router.refresh()}
+          className="mt-3 h-9 rounded-sm border border-red-300 bg-white px-4 text-[13px] font-medium text-red-700 hover:bg-red-50"
         >
-          Retry
-        </Button>
+          Try again
+        </button>
       </div>
     );
   }
 
+  const pageIndex = table.getState().pagination.pageIndex;
+  const pageSize = table.getState().pagination.pageSize;
+  const firstRow = filteredUsers.length === 0 ? 0 : pageIndex * pageSize + 1;
+  const lastRow = Math.min((pageIndex + 1) * pageSize, filteredUsers.length);
+
   return (
     <div className="space-y-4">
-      {/* Header with Filters and Export Buttons */}
-      <div className="flex items-center justify-between gap-4 flex-wrap">
-        <div className="flex items-center gap-4 flex-1 min-w-[300px]">
-          <Input
-            placeholder="Filter by any field..."
+      {/* Toolbar */}
+      <div className="flex flex-wrap items-center gap-2 border border-slate-200 bg-white p-3">
+        <div className="relative min-w-0 flex-1 sm:max-w-xs">
+          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+            <HugeiconsIcon icon={Search01Icon} size={16} strokeWidth={1.8} />
+          </span>
+          <input
             value={(table.getState().globalFilter as string) ?? ""}
-            onChange={(event) => {
-              table.setGlobalFilter(event.target.value); 
-            }}
-            className="max-w-sm"
+            onChange={(event) => table.setGlobalFilter(event.target.value)}
+            placeholder="Search name, PSN, phone..."
+            className="h-9 w-full rounded-sm border border-slate-300 pl-9 pr-3 text-[13px] outline-none focus:border-brand-600"
           />
-          
-          {/* Government Entity Filter */}
-          <Select
-            value={selectedEntity}
-            onValueChange={setSelectedEntity}
-          >
-            <SelectTrigger className="w-[250px]">
-              <SelectValue placeholder="Filter by Government Entity" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Government Entities</SelectItem>
-              {governmentEntities.map((entity: string) => (
-                <SelectItem key={entity} value={entity}>
-                  {entity}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
         </div>
 
-        <div className="flex items-center gap-2">
-          {/* Export Current Users */}
-          <Button
+        <select
+          value={selectedEntity}
+          onChange={(e) => setSelectedEntity(e.target.value)}
+          className="h-9 max-w-[260px] rounded-sm border border-slate-300 bg-white px-2 text-[13px] text-slate-700 outline-none focus:border-brand-600"
+        >
+          <option value="all">All government entities</option>
+          {governmentEntities.map((entity: string) => (
+            <option key={entity} value={entity}>
+              {entity}
+            </option>
+          ))}
+        </select>
+
+        <div className="ml-auto flex items-center gap-2">
+          <button
             onClick={exportCurrentUsers}
-            variant="outline"
-            size="sm"
-            className="flex items-center gap-2"
             disabled={filteredUsers.length === 0}
+            className="flex h-9 items-center gap-1.5 rounded-sm border border-slate-300 px-3 text-[13px] font-medium text-slate-700 hover:border-brand-600 hover:text-brand-700 disabled:text-slate-300"
           >
-            <Download className="w-4 h-4" />
-            Export Current
-          </Button>
+            <HugeiconsIcon icon={Download01Icon} size={15} strokeWidth={1.8} />
+            Export view
+          </button>
 
-          {/* Export All by Entity */}
-          <Button
+          <button
             onClick={exportAllByEntity}
-            variant="outline"
-            size="sm"
-            className="flex items-center gap-2"
             disabled={users.length === 0}
+            className="flex h-9 items-center gap-1.5 rounded-sm border border-slate-300 px-3 text-[13px] font-medium text-slate-700 hover:border-brand-600 hover:text-brand-700 disabled:text-slate-300"
           >
-            <Download className="w-4 h-4" />
-            Export All by Entity
-          </Button>
+            <HugeiconsIcon icon={Download01Icon} size={15} strokeWidth={1.8} />
+            Export by entity
+          </button>
 
-          {/* Rows per page selector */}
-          <div className="flex items-center space-x-2">
-            <p className="text-sm text-gray-600">Rows:</p>
-            <Select
-              value={`${table.getState().pagination.pageSize}`}
-              onValueChange={(value) => {
-                table.setPageSize(Number(value));
-              }}
-            >
-              <SelectTrigger className="h-8 w-[70px]">
-                <SelectValue placeholder={table.getState().pagination.pageSize} />
-              </SelectTrigger>
-              <SelectContent side="top">
-                {[5, 10, 20, 30, 40, 50].map((pageSize) => (
-                  <SelectItem key={pageSize} value={`${pageSize}`}>
-                    {pageSize}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          <select
+            value={`${pageSize}`}
+            onChange={(e) => table.setPageSize(Number(e.target.value))}
+            title="Rows per page"
+            className="h-9 rounded-sm border border-slate-300 bg-white px-2 text-[13px] text-slate-700 outline-none focus:border-brand-600"
+          >
+            {[5, 10, 20, 30, 40, 50].map((size) => (
+              <option key={size} value={size}>
+                {size} rows
+              </option>
+            ))}
+          </select>
         </div>
       </div>
 
-      {/* Entity Summary and Quick Export */}
-      <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-blue-800">
-            Showing {filteredUsers.length} of {users.length} users
-            {selectedEntity !== "all" && ` from ${selectedEntity}`}
-          </p>
-          
-          {selectedEntity !== "all" && filteredUsers.length > 0 && (
-            <Button
-              onClick={() => exportToCSV(
-                filteredUsers, 
-                `${selectedEntity.replace(/[^a-zA-Z0-9]/g, '_')}_users_${new Date().toISOString().split('T')[0]}`
-              )}
-              variant="ghost"
-              size="sm"
-              className="text-blue-700 hover:text-blue-800 hover:bg-blue-100 flex items-center gap-1"
-            >
-              <Download className="w-3 h-3" />
-              Export {selectedEntity}
-            </Button>
-          )}
-        </div>
-      </div>
+      <p className="text-[13px] text-slate-600">
+        <span className="font-medium text-slate-900">{filteredUsers.length}</span> of {users.length}{" "}
+        users
+        {selectedEntity !== "all" && ` in ${selectedEntity}`}
+      </p>
 
-      {/* Government Entities Quick Export Panel */}
-      {/* <div className="bg-gray-50 p-4 rounded-lg border">
-        <h3 className="text-sm font-semibold text-gray-700 mb-2">Quick Export by Government Entity:</h3>
-        <div className="flex flex-wrap gap-2">
-          {governmentEntities.map((entity: string) => {
-            const entityUsers = users.filter((user: UserWithRelations) => user.government_entity === entity);
-            return (
-              <Button
-                key={entity}
-                onClick={() => exportToCSV(
-                  entityUsers,
-                  `${entity.replace(/[^a-zA-Z0-9]/g, '_')}_users_${new Date().toISOString().split('T')[0]}`
-                )}
-                variant="outline"
-                size="sm"
-                className="flex items-center gap-1 text-xs"
-                disabled={entityUsers.length === 0}
-              >
-                <Download className="w-3 h-3" />
-                {entity} ({entityUsers.length})
-              </Button>
-            );
-          })}
-        </div>
-      </div> */}
-
-      {/* Users Table */}
-      <div className="rounded-md border shadow-sm">
+      {/* Table */}
+      <div className="overflow-x-auto border border-slate-200 bg-white">
         <Table className="min-w-[1200px]">
-          <TableHeader className="bg-gray-50">
+          <TableHeader className="bg-slate-50">
             {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id} className="text-[14px]">
+              <TableRow key={headerGroup.id} className="border-slate-200 hover:bg-transparent">
                 {headerGroup.headers.map((header) => (
-                  <TableHead key={header.id} className="font-semibold text-gray-700">
+                  <TableHead
+                    key={header.id}
+                    className="whitespace-nowrap text-[12px] font-semibold uppercase tracking-wide text-slate-600"
+                  >
                     {header.isPlaceholder
                       ? null
-                      : flexRender(
-                          header.column.columnDef.header,
-                          header.getContext()
-                        )}
+                      : flexRender(header.column.columnDef.header, header.getContext())}
                   </TableHead>
                 ))}
               </TableRow>
@@ -586,21 +551,18 @@ export function AdminUsersTable({ initialUsers, token }: AdminUsersTableProps) {
           <TableBody>
             {table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id} className="hover:bg-gray-50 text-[13px]">
+                <TableRow key={row.id} className="border-slate-100 text-[13px] hover:bg-slate-50">
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id} className="py-3">
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext()
-                      )}
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </TableCell>
                   ))}
                 </TableRow>
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={columns.length} className="h-24 text-center text-gray-500">
-                  No users found
+                <TableCell colSpan={columns.length} className="h-24 text-center text-slate-500">
+                  No users match these filters
                 </TableCell>
               </TableRow>
             )}
@@ -609,52 +571,49 @@ export function AdminUsersTable({ initialUsers, token }: AdminUsersTableProps) {
       </div>
 
       {/* Pagination */}
-      <div className="flex items-center justify-between px-2">
-        <div className="flex-1 text-sm text-gray-600">
-          Showing {table.getState().pagination.pageIndex * table.getState().pagination.pageSize + 1} to{" "}
-          {Math.min(
-            (table.getState().pagination.pageIndex + 1) * table.getState().pagination.pageSize,
-            filteredUsers.length
-          )}{" "}
-          of {filteredUsers.length} entries
-        </div>
-        <div className="flex items-center space-x-2">
-          <Button
-            variant="outline"
-            className="hidden h-8 w-8 p-0 lg:flex"
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-[13px] text-slate-500">
+          Showing {firstRow} to {lastRow} of {filteredUsers.length}
+        </p>
+
+        <div className="flex items-center gap-1">
+          <button
             onClick={() => table.setPageIndex(0)}
             disabled={!table.getCanPreviousPage()}
+            aria-label="First page"
+            className="hidden h-8 w-8 items-center justify-center rounded-sm border border-slate-300 text-slate-600 hover:border-brand-600 hover:text-brand-700 disabled:text-slate-300 lg:flex"
           >
-            <span className="sr-only">Go to first page</span>
-            <ChevronsLeft className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="outline"
-            className="h-8 w-8 p-0"
+            <HugeiconsIcon icon={ArrowLeftDoubleIcon} size={15} strokeWidth={2} />
+          </button>
+          <button
             onClick={() => table.previousPage()}
             disabled={!table.getCanPreviousPage()}
+            aria-label="Previous page"
+            className="flex h-8 w-8 items-center justify-center rounded-sm border border-slate-300 text-slate-600 hover:border-brand-600 hover:text-brand-700 disabled:text-slate-300"
           >
-            <span className="sr-only">Go to previous page</span>
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="outline"
-            className="h-8 w-8 p-0"
+            <HugeiconsIcon icon={ArrowLeft01Icon} size={15} strokeWidth={2} />
+          </button>
+
+          <span className="px-2 text-[13px] text-slate-600">
+            Page {pageIndex + 1} of {Math.max(1, table.getPageCount())}
+          </span>
+
+          <button
             onClick={() => table.nextPage()}
             disabled={!table.getCanNextPage()}
+            aria-label="Next page"
+            className="flex h-8 w-8 items-center justify-center rounded-sm border border-slate-300 text-slate-600 hover:border-brand-600 hover:text-brand-700 disabled:text-slate-300"
           >
-            <span className="sr-only">Go to next page</span>
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="outline"
-            className="hidden h-8 w-8 p-0 lg:flex"
+            <HugeiconsIcon icon={ArrowRight01Icon} size={15} strokeWidth={2} />
+          </button>
+          <button
             onClick={() => table.setPageIndex(table.getPageCount() - 1)}
             disabled={!table.getCanNextPage()}
+            aria-label="Last page"
+            className="hidden h-8 w-8 items-center justify-center rounded-sm border border-slate-300 text-slate-600 hover:border-brand-600 hover:text-brand-700 disabled:text-slate-300 lg:flex"
           >
-            <span className="sr-only">Go to last page</span>
-            <ChevronsRight className="h-4 w-4" />
-          </Button>
+            <HugeiconsIcon icon={ArrowRightDoubleIcon} size={15} strokeWidth={2} />
+          </button>
         </div>
       </div>
     </div>

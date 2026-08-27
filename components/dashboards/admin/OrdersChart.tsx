@@ -3,7 +3,8 @@
 
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis, Tooltip } from "recharts";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
-import { TrendingUp } from "lucide-react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { ChartLineData01Icon } from "@hugeicons/core-free-icons";
 
 interface OrdersChartProps {
   orders: any[];
@@ -83,7 +84,7 @@ export default function OrdersChart({ orders, products }: OrdersChartProps) {
           <div className="grid gap-2">
             <div className="flex items-center gap-2 font-medium leading-none">
               Order trends overview
-              <TrendingUp className="h-4 w-4" />
+              <HugeiconsIcon icon={ChartLineData01Icon} size={15} strokeWidth={1.8} />
             </div>
           </div>
         </div>

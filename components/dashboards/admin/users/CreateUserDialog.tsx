@@ -72,7 +72,7 @@ export function CreateUserDialog({ token }: { token: string }) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="default" className="bg-green-700 hover:bg-green-600">Create New User</Button>
+        <Button variant="default" className="bg-brand-700 hover:bg-brand-800">Create New User</Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[600px] font-header">
         <DialogHeader>

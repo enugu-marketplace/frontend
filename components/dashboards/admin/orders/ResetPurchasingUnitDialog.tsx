@@ -12,7 +12,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Upload } from "lucide-react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { RefreshIcon } from "@hugeicons/core-free-icons";
 import { toast } from "sonner";
 
 interface ResetPurchasingUnitDialogProps {
@@ -24,6 +25,13 @@ export function ResetPurchasingUnitDialog({ token }: ResetPurchasingUnitDialogPr
   const [isResetting, setIsResetting] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState(() => new Date().toISOString().slice(0, 7));
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [unmatchedNames, setUnmatchedNames] = useState<string[]>([]);
+  const [pendingSubmission, setPendingSubmission] = useState<{
+    normalizedCsv: string;
+    month: string;
+    originalName: string;
+    validCount: number;
+  } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
 
@@ -53,6 +61,9 @@ export function ResetPurchasingUnitDialog({ token }: ResetPurchasingUnitDialogPr
   const governmentEntityAliases = new Set(["government_entity", "governmententity", "entity"]);
   const employeeIdAliases = new Set(["employee_id", "employeeid", "employee", "staff_id", "staffid"]);
   const narrationAliases = new Set(["narration", "note", "notes", "remark", "remarks"]);
+  const CYCLE_START_YEAR = 2026;
+  const CYCLE_START_MONTH = 4;
+  const CYCLE_START_DAY = 21;
 
   const isCsvFile = (file: File) => {
     const fileName = file.name.toLowerCase();
@@ -136,6 +147,101 @@ export function ResetPurchasingUnitDialog({ token }: ResetPurchasingUnitDialogPr
     return parsed.toString();
   };
 
+  const normalizeVerificationId = (value: string) =>
+    String(value ?? "")
+      .replace(/\s+/g, "")
+      .trim();
+
+  const normalizePersonName = (value: string) =>
+    String(value ?? "")
+      .replace(/\([^)]*\)/g, " ")
+      .toLowerCase()
+      .replace(/[-_/]+/g, " ")
+      .replace(/[.,']/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+
+  const stopwordTokens = new Set(["mr", "mrs", "miss", "dr", "nee"]);
+
+  const toNameTokens = (value: string) =>
+    normalizePersonName(value)
+      .split(" ")
+      .map((token) => token.trim())
+      .filter((token) => token.length > 1 && !stopwordTokens.has(token));
+
+  // Canonical key lets "Ugwu Somto" match "Somto Ugwu".
+  const toNameMatchKey = (value: string) => {
+    const tokens = toNameTokens(value);
+    if (tokens.length === 0) {
+      return "";
+    }
+
+    return tokens
+      .sort((a, b) => a.localeCompare(b))
+      .join(" ");
+  };
+
+  const extractDisplayNameFromOrder = (order: any) => {
+    const fullName = `${order?.user?.firstname ?? ""} ${order?.user?.lastname ?? ""}`.trim();
+    return fullName || String(order?.user?.name ?? "").trim();
+  };
+
+  const getOrderMonthKey = (placedAt: string) => {
+    const date = new Date(placedAt);
+    if (Number.isNaN(date.getTime())) {
+      return null;
+    }
+
+    let year = date.getUTCFullYear();
+    let monthIndex = date.getUTCMonth();
+    const day = date.getUTCDate();
+
+    const shouldApplyCycle =
+      year > CYCLE_START_YEAR ||
+      (year === CYCLE_START_YEAR && monthIndex + 1 > CYCLE_START_MONTH) ||
+      (year === CYCLE_START_YEAR && monthIndex + 1 === CYCLE_START_MONTH && day >= CYCLE_START_DAY);
+
+    if (shouldApplyCycle && day >= CYCLE_START_DAY) {
+      monthIndex += 1;
+      if (monthIndex > 11) {
+        monthIndex = 0;
+        year += 1;
+      }
+    }
+
+    return `${year}-${String(monthIndex + 1).padStart(2, "0")}`;
+  };
+
+  const hasNameMatch = (uploadedName: string, orderNameEntries: Array<{ key: string; tokens: string[] }>) => {
+    const uploadedKey = toNameMatchKey(uploadedName);
+    const uploadedTokens = toNameTokens(uploadedName);
+
+    if (!uploadedKey || uploadedTokens.length === 0) {
+      return false;
+    }
+
+    for (const entry of orderNameEntries) {
+      if (entry.key === uploadedKey) {
+        return true;
+      }
+
+      if (uploadedTokens.length < 2 || entry.tokens.length < 2) {
+        continue;
+      }
+
+      const orderTokenSet = new Set(entry.tokens);
+      const uploadedTokenSet = new Set(uploadedTokens);
+      const uploadedInsideOrder = uploadedTokens.every((token) => orderTokenSet.has(token));
+      const orderInsideUploaded = entry.tokens.every((token) => uploadedTokenSet.has(token));
+
+      if (uploadedInsideOrder || orderInsideUploaded) {
+        return true;
+      }
+    }
+
+    return false;
+  };
+
   const extractRowsFromFile = async (file: File): Promise<string[][]> => {
     const parseSpreadsheetRows = async () => {
       const XLSX = await import("xlsx");
@@ -202,7 +308,7 @@ export function ResetPurchasingUnitDialog({ token }: ResetPurchasingUnitDialogPr
 
     const attempts: Array<{ label: string; run: () => Promise<Response> }> = [
       {
-        label: "multipart:file",
+        label: "file",
         run: async () => {
           const formData = new FormData();
           formData.append("file", normalizedFile);
@@ -263,6 +369,110 @@ export function ResetPurchasingUnitDialog({ token }: ResetPurchasingUnitDialogPr
     }
 
     throw new Error(`Bulk repayment failed. ${errors.join(" | ")}`);
+  };
+
+  const fetchOrderNamesSet = async (month: string) => {
+    const [ordersResponse, usersResponse] = await Promise.all([
+      fetch(`${apiBaseUrl}/admin/all-order`, {
+        method: "GET",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Accept": "application/json",
+        },
+      }),
+      fetch(`${apiBaseUrl}/admin/users`, {
+        method: "GET",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Accept": "application/json",
+        },
+      }),
+    ]);
+
+    if (!ordersResponse.ok) {
+      throw new Error(await readErrorMessage(ordersResponse));
+    }
+
+    if (!usersResponse.ok) {
+      throw new Error(await readErrorMessage(usersResponse));
+    }
+
+    const ordersJson = await ordersResponse.json().catch(() => ({}));
+    const usersJson = await usersResponse.json().catch(() => ({}));
+
+    const orders = Array.isArray(ordersJson?.data) ? ordersJson.data : [];
+    const users = Array.isArray(usersJson?.data) ? usersJson.data : [];
+    const usersById = new Map<string, any>(
+      users.map((user: any) => [String(user?.id ?? ""), user])
+    );
+
+    const nameEntries: Array<{ key: string; tokens: string[] }> = [];
+    const verificationIds = new Set<string>();
+
+    for (const order of orders) {
+      if (getOrderMonthKey(String(order?.placedAt ?? "")) !== month) {
+        continue;
+      }
+
+      let name = extractDisplayNameFromOrder(order);
+      let verificationId = normalizeVerificationId(String(order?.user?.verification_id ?? ""));
+
+      if (!name && order?.userId) {
+        const matchedUser = usersById.get(String(order.userId));
+        const fallbackFullName = `${matchedUser?.firstname ?? ""} ${matchedUser?.lastname ?? ""}`.trim();
+        name = fallbackFullName || String(matchedUser?.name ?? "").trim();
+        if (!verificationId) {
+          verificationId = normalizeVerificationId(String(matchedUser?.verification_id ?? ""));
+        }
+      }
+
+      const nameKey = toNameMatchKey(name);
+      if (nameKey) {
+        nameEntries.push({ key: nameKey, tokens: toNameTokens(name) });
+      }
+
+      if (verificationId) {
+        verificationIds.add(verificationId);
+      }
+    }
+
+    return { nameEntries, verificationIds };
+  };
+
+  const resetDialogState = () => {
+    setSelectedFile(null);
+    setUnmatchedNames([]);
+    setPendingSubmission(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  const continueWithPendingUpload = async () => {
+    if (!pendingSubmission) {
+      return;
+    }
+
+    setIsResetting(true);
+    try {
+      const { result, attemptLabel } = await submitBulkRepayments(
+        pendingSubmission.normalizedCsv,
+        pendingSubmission.month,
+        pendingSubmission.originalName
+      );
+
+      setIsOpen(false);
+      resetDialogState();
+      toast.success(
+        `Successfully processed ${result.updatedCount || result.successCount || result.processedCount || pendingSubmission.validCount} repayment record(s) for ${pendingSubmission.month}.`
+      );
+    } catch (error) {
+      console.error("Reset error:", error);
+      const errorMessage = error instanceof Error ? error.message : "Failed to confirm bulk repayments. Please try again.";
+      toast.error(errorMessage);
+    } finally {
+      setIsResetting(false);
+    }
   };
 
 
@@ -394,6 +604,50 @@ export function ResetPurchasingUnitDialog({ token }: ResetPurchasingUnitDialogPr
         }),
       ].join("\n");
 
+      if (nameIndex !== -1) {
+        const uploadedNames = Array.from(
+          new Set(
+            validRows
+              .map((entry) => String(entry.row[nameIndex] ?? "").trim())
+              .filter(Boolean)
+          )
+        );
+
+        if (uploadedNames.length > 0) {
+          const { nameEntries, verificationIds } = await fetchOrderNamesSet(selectedMonth);
+          const unmatched = validRows
+            .filter((entry) => {
+              const uploadedName = String(entry.row[nameIndex] ?? "").trim();
+              if (!uploadedName) {
+                return false;
+              }
+
+              const uploadedVerificationId = normalizeVerificationId(entry.verificationId);
+              const verificationMatched = !!uploadedVerificationId && verificationIds.has(uploadedVerificationId);
+              const nameMatched = hasNameMatch(uploadedName, nameEntries);
+              return !verificationMatched && !nameMatched;
+            })
+            .map((entry) => String(entry.row[nameIndex] ?? "").trim())
+            .filter(Boolean)
+            .filter((name, index, arr) => arr.indexOf(name) === index);
+
+          if (unmatched.length > 0) {
+            setUnmatchedNames(unmatched);
+            setPendingSubmission({
+              normalizedCsv,
+              month: selectedMonth,
+              originalName: selectedFile.name,
+              validCount: validRows.length,
+            });
+            toast.warning(
+              `${unmatched.length} uploaded name(s) were not found in orders for ${selectedMonth}. Review and confirm to continue.`
+            );
+            setIsResetting(false);
+            return;
+          }
+        }
+      }
+
       const { result, attemptLabel } = await submitBulkRepayments(
         normalizedCsv,
         selectedMonth,
@@ -401,10 +655,7 @@ export function ResetPurchasingUnitDialog({ token }: ResetPurchasingUnitDialogPr
       );
 
       setIsOpen(false);
-      setSelectedFile(null);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
+      resetDialogState();
 
       toast.success(
         `Successfully processed ${result.updatedCount || result.successCount || result.processedCount || validRows.length} repayment record(s) for ${selectedMonth} (${attemptLabel}).`
@@ -430,6 +681,8 @@ export function ResetPurchasingUnitDialog({ token }: ResetPurchasingUnitDialogPr
         }
         return;
       }
+      setUnmatchedNames([]);
+      setPendingSubmission(null);
       setSelectedFile(file);
     }
   };
@@ -437,8 +690,8 @@ export function ResetPurchasingUnitDialog({ token }: ResetPurchasingUnitDialogPr
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" className="flex font-header bg-green-700 hover:bg-green-600 text-white items-center gap-2">
-          <Upload className="h-4 w-4" />
+        <Button variant="outline" className="flex font-header bg-brand-700 hover:bg-brand-800 text-white items-center gap-2">
+          <HugeiconsIcon icon={RefreshIcon} size={16} strokeWidth={1.8} />
           Confirm Repayments
         </Button>
       </DialogTrigger>
@@ -479,7 +732,7 @@ export function ResetPurchasingUnitDialog({ token }: ResetPurchasingUnitDialogPr
               )}
             </div>
 
-            <div className="bg-green-50 border border-green-200 rounded p-3 text-sm text-green-800">
+            <div className="bg-brand-50 border border-brand-200 rounded p-3 text-sm text-brand-800">
               <p className="font-semibold mb-1">File Requirements:</p>
               <ul className="list-disc list-inside space-y-1">
                 <li><span className="font-medium">Required columns:</span> <code className="bg-white px-1 rounded">verification_id</code> and <code className="bg-white px-1 rounded">amount</code></li>
@@ -489,35 +742,59 @@ export function ResetPurchasingUnitDialog({ token }: ResetPurchasingUnitDialogPr
                 <li>Only rows with both verification_id and amount will be processed</li>
               </ul>
             </div>
+
+            {unmatchedNames.length > 0 && (
+              <div className="bg-amber-50 border border-amber-200 rounded p-3 text-sm text-amber-900">
+                <p className="font-semibold mb-1">Names not found in orders for {selectedMonth} ({unmatchedNames.length})</p>
+                <p className="mb-2">These names were in the uploaded file but could not be matched to orders in the selected month.</p>
+                <div className="max-h-28 overflow-auto rounded border border-amber-200 bg-white p-2">
+                  <ul className="list-disc list-inside space-y-1">
+                    {unmatchedNames.map((name) => (
+                      <li key={name}>{name}</li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            )}
           </div>
         </ScrollArea>
 
-        <div className="flex justify-end gap-3 mt-6">
+        <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:flex-wrap sm:justify-end sm:gap-3">
           <Button
             variant="outline"
             onClick={downloadTemplate}
-            className="flex items-center gap-2"
+            className="flex w-full items-center justify-center gap-2 sm:w-auto"
           >
-            <Upload className="h-4 w-4" />
+            <HugeiconsIcon icon={RefreshIcon} size={16} strokeWidth={1.8} />
             Download Template
           </Button>
           <Button
             variant="outline"
             onClick={() => {
               setIsOpen(false);
-              setSelectedFile(null);
-              if (fileInputRef.current) {
-                fileInputRef.current.value = "";
-              }
+              resetDialogState();
             }}
             disabled={isResetting}
+            className="w-full sm:w-auto"
           >
             Cancel
           </Button>
+          {pendingSubmission && (
+            <Button
+              onClick={continueWithPendingUpload}
+              disabled={isResetting}
+              className="flex w-full items-center justify-center gap-2 bg-amber-600 hover:bg-amber-500 sm:w-auto"
+            >
+              {isResetting ? "Uploading..." : "Upload Anyway"}
+              {isResetting && (
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+              )}
+            </Button>
+          )}
           <Button
             onClick={confirmBulkRepayments}
             disabled={isResetting || !selectedMonth || !selectedFile}
-            className="flex items-center bg-green-700 hover:bg-green-600 gap-2"
+            className="flex w-full items-center justify-center gap-2 bg-brand-700 hover:bg-brand-800 sm:w-auto"
           >
             {isResetting ? "Processing..." : "Confirm Repayments"}
             {isResetting && (

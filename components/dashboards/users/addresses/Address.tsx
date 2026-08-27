@@ -2,8 +2,6 @@
 import { useSession } from 'next-auth/react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -11,9 +9,14 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { useEffect, useState } from 'react';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Trash2, Edit, Plus } from 'lucide-react';
-import { Skeleton } from '@/components/ui/skeleton';
+import { HugeiconsIcon } from '@hugeicons/react';
+import {
+  Delete02Icon,
+  PencilEdit02Icon,
+  PlusSignIcon,
+  Location01Icon,
+} from '@hugeicons/core-free-icons';
+import { cn } from '@/lib/utils';
 import { Switch } from '@/components/ui/switch';
 
 
@@ -197,19 +200,15 @@ export default function AddressesPage() {
 
   if (isLoading) {
     return (
-      <div className="container py-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="space-y-5">
+        <div className="h-6 w-40 animate-pulse rounded bg-slate-100" />
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {[...Array(3)].map((_, i) => (
-            <Card key={i}>
-              <CardHeader>
-                <Skeleton className="h-6 w-32" />
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-4 w-3/4" />
-                <Skeleton className="h-4 w-1/2" />
-              </CardContent>
-            </Card>
+            <div key={i} className="space-y-2 border border-slate-200 bg-white p-4">
+              <div className="h-4 w-24 animate-pulse rounded bg-slate-100" />
+              <div className="h-3 w-full animate-pulse rounded bg-slate-100" />
+              <div className="h-3 w-2/3 animate-pulse rounded bg-slate-100" />
+            </div>
           ))}
         </div>
       </div>
@@ -217,31 +216,50 @@ export default function AddressesPage() {
   }
 
   return (
-    <div className="container py-8">
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-2xl font-bold">My Addresses</h1>
-        <Button onClick={() => setIsFormOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" /> Add New Address
-        </Button>
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-semibold text-slate-900">Delivery addresses</h1>
+          <p className="mt-1 text-sm text-slate-600">
+            Where your orders are delivered. The default address is used at checkout.
+          </p>
+        </div>
+
+        {!isFormOpen && (
+          <button
+            onClick={() => setIsFormOpen(true)}
+            className="flex h-9 items-center gap-1.5 rounded-sm bg-brand-700 px-4 text-[13px] font-medium text-white hover:bg-brand-800"
+          >
+            <HugeiconsIcon icon={PlusSignIcon} size={15} strokeWidth={2} />
+            Add address
+          </button>
+        )}
       </div>
 
       {isFormOpen && (
-        <Card className="mb-8">
-          <CardHeader>
-            <CardTitle>{isEditing ? 'Edit Address' : 'Add New Address'}</CardTitle>
-          </CardHeader>
-          <CardContent>
+        <div className="border border-slate-200 bg-white">
+          <p className="border-b border-slate-200 px-4 py-3 text-[13px] font-semibold uppercase tracking-wide text-slate-600">
+            {isEditing ? 'Edit address' : 'New address'}
+          </p>
+
+          <div className="p-4">
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid gap-4 md:grid-cols-2">
                   <FormField
                     control={form.control}
                     name="label"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Label (e.g., Home, Office)</FormLabel>
+                        <FormLabel className="text-[13px] font-medium text-slate-700">
+                          Label
+                        </FormLabel>
                         <FormControl>
-                          <Input placeholder="Home" {...field} />
+                          <Input
+                            placeholder="Home"
+                            className="h-10 rounded-sm border-slate-300 text-sm shadow-none focus-visible:border-brand-600 focus-visible:ring-brand-600/15"
+                            {...field}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -252,9 +270,15 @@ export default function AddressesPage() {
                     name="street"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Street Address</FormLabel>
+                        <FormLabel className="text-[13px] font-medium text-slate-700">
+                          Street address
+                        </FormLabel>
                         <FormControl>
-                          <Input placeholder="24 Richard Street Asata" {...field} />
+                          <Input
+                            placeholder="24 Richard Street, Asata"
+                            className="h-10 rounded-sm border-slate-300 text-sm shadow-none focus-visible:border-brand-600 focus-visible:ring-brand-600/15"
+                            {...field}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -265,9 +289,15 @@ export default function AddressesPage() {
                     name="city"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>City</FormLabel>
+                        <FormLabel className="text-[13px] font-medium text-slate-700">
+                          City
+                        </FormLabel>
                         <FormControl>
-                          <Input placeholder="Enugu North" {...field} />
+                          <Input
+                            placeholder="Enugu North"
+                            className="h-10 rounded-sm border-slate-300 text-sm shadow-none focus-visible:border-brand-600 focus-visible:ring-brand-600/15"
+                            {...field}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -278,9 +308,15 @@ export default function AddressesPage() {
                     name="state"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>State</FormLabel>
+                        <FormLabel className="text-[13px] font-medium text-slate-700">
+                          State
+                        </FormLabel>
                         <FormControl>
-                          <Input placeholder="Enugu" {...field} />
+                          <Input
+                            placeholder="Enugu"
+                            className="h-10 rounded-sm border-slate-300 text-sm shadow-none focus-visible:border-brand-600 focus-visible:ring-brand-600/15"
+                            {...field}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -291,9 +327,15 @@ export default function AddressesPage() {
                     name="country"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Country</FormLabel>
+                        <FormLabel className="text-[13px] font-medium text-slate-700">
+                          Country
+                        </FormLabel>
                         <FormControl>
-                          <Input placeholder="Nigeria" {...field} />
+                          <Input
+                            placeholder="Nigeria"
+                            className="h-10 rounded-sm border-slate-300 text-sm shadow-none focus-visible:border-brand-600 focus-visible:ring-brand-600/15"
+                            {...field}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -304,9 +346,15 @@ export default function AddressesPage() {
                     name="zipCode"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Zip Code</FormLabel>
+                        <FormLabel className="text-[13px] font-medium text-slate-700">
+                          Postal code
+                        </FormLabel>
                         <FormControl>
-                          <Input placeholder="400102" {...field} />
+                          <Input
+                            placeholder="400102"
+                            className="h-10 rounded-sm border-slate-300 text-sm shadow-none focus-visible:border-brand-600 focus-visible:ring-brand-600/15"
+                            {...field}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -316,103 +364,119 @@ export default function AddressesPage() {
                     control={form.control}
                     name="isDefault"
                     render={({ field }) => (
-                      <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                        <div className="space-y-0.5">
-                          <FormLabel className="text-base">Set as default address</FormLabel>
-                        </div>
+                      <FormItem className="flex flex-row items-center justify-between gap-3 rounded-sm border border-slate-200 p-3 md:col-span-2">
+                        <FormLabel className="text-[13px] font-medium text-slate-700">
+                          Use this as my default delivery address
+                        </FormLabel>
                         <FormControl>
-                          <Switch
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                          />
+                          <Switch checked={field.value} onCheckedChange={field.onChange} />
                         </FormControl>
                       </FormItem>
                     )}
                   />
                 </div>
+
                 <div className="flex justify-end gap-2">
-                  <Button variant="outline" type="button" onClick={resetForm}>
-                    Cancel
-                  </Button>
-                  <Button 
-                    type="submit" 
-                    disabled={createAddressMutation.isPending || updateAddressMutation.isPending}
+                  <button
+                    type="button"
+                    onClick={resetForm}
+                    className="h-10 rounded-sm border border-slate-300 px-4 text-[13px] font-medium text-slate-700 hover:bg-slate-50"
                   >
-                    {createAddressMutation.isPending || updateAddressMutation.isPending 
-                      ? 'Saving...' 
-                      : 'Save Address'}
-                  </Button>
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={createAddressMutation.isPending || updateAddressMutation.isPending}
+                    className="h-10 rounded-sm bg-brand-700 px-4 text-[13px] font-medium text-white hover:bg-brand-800 disabled:bg-slate-200 disabled:text-slate-500"
+                  >
+                    {createAddressMutation.isPending || updateAddressMutation.isPending
+                      ? 'Saving...'
+                      : 'Save address'}
+                  </button>
                 </div>
               </form>
             </Form>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {addresses?.map((address) => (
-          <Card key={address.id} className={address.isDefault ? 'border-primary border-2' : ''}>
-            <CardHeader className="flex flex-row justify-between items-start">
-              <div>
-                <CardTitle className="flex items-center gap-2">
-                  {address.label}
+      {addresses?.length === 0 ? (
+        <div className="border border-slate-200 bg-white px-6 py-14 text-center">
+          <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-400">
+            <HugeiconsIcon icon={Location01Icon} size={24} strokeWidth={1.5} />
+          </span>
+          <p className="mt-3 text-sm font-medium text-slate-800">No addresses saved</p>
+          <p className="mt-1 text-[13px] text-slate-500">
+            Add one so your orders have somewhere to go.
+          </p>
+          <button
+            onClick={() => setIsFormOpen(true)}
+            className="mt-4 inline-flex h-9 items-center gap-1.5 rounded-sm bg-brand-700 px-4 text-[13px] font-medium text-white hover:bg-brand-800"
+          >
+            <HugeiconsIcon icon={PlusSignIcon} size={15} strokeWidth={2} />
+            Add your first address
+          </button>
+        </div>
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {addresses?.map((address) => (
+            <div
+              key={address.id}
+              className={cn(
+                'flex flex-col border bg-white p-4',
+                address.isDefault ? 'border-brand-600' : 'border-slate-200'
+              )}
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-medium text-slate-900">{address.label}</p>
                   {address.isDefault && (
-                    <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
+                    <span className="rounded-sm bg-brand-50 px-2 py-0.5 text-[11px] font-medium text-brand-800 ring-1 ring-brand-200">
                       Default
                     </span>
                   )}
-                </CardTitle>
+                </div>
+
+                <div className="flex shrink-0 items-center gap-1">
+                  <button
+                    onClick={() => handleEdit(address)}
+                    title="Edit address"
+                    className="rounded-sm p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+                  >
+                    <HugeiconsIcon icon={PencilEdit02Icon} size={16} strokeWidth={1.8} />
+                  </button>
+                  <button
+                    onClick={() => deleteAddressMutation.mutate(address.id)}
+                    disabled={deleteAddressMutation.isPending}
+                    title="Delete address"
+                    className="rounded-sm p-1.5 text-slate-500 hover:bg-red-50 hover:text-red-700"
+                  >
+                    <HugeiconsIcon icon={Delete02Icon} size={16} strokeWidth={1.8} />
+                  </button>
+                </div>
               </div>
-              <div className="flex gap-2">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => handleEdit(address)}
-                >
-                  <Edit className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => deleteAddressMutation.mutate(address.id)}
-                  disabled={deleteAddressMutation.isPending}
-                >
-                  <Trash2 className="h-4 w-4 text-red-500" />
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm">{address.street}</p>
-              <p className="text-sm">
+
+              <address className="mt-2 text-[13px] not-italic leading-6 text-slate-600">
+                {address.street}
+                <br />
                 {address.city}, {address.state}
-              </p>
-              <p className="text-sm">
-                {address.country}, {address.zipCode}
-              </p>
+                <br />
+                {address.country} {address.zipCode}
+              </address>
+
               {!address.isDefault && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="mt-4"
+                <button
                   onClick={() => handleSetDefault(address.id)}
                   disabled={setDefaultAddressMutation.isPending}
+                  className="mt-auto pt-3 text-left text-[13px] font-medium text-brand-700 hover:underline disabled:text-slate-400"
                 >
-                  Set as Default
-                </Button>
+                  Set as default
+                </button>
               )}
-            </CardContent>
-          </Card>
-        ))}
-
-        {addresses?.length === 0 && (
-          <div className="col-span-full text-center py-12">
-            <p className="text-gray-500 mb-4">You haven't added any addresses yet</p>
-            <Button onClick={() => setIsFormOpen(true)}>
-              <Plus className="mr-2 h-4 w-4" /> Add Your First Address
-            </Button>
-          </div>
-        )}
-      </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

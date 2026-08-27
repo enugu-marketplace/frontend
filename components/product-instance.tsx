@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -10,54 +10,31 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Card, CardContent, CardHeader, CardFooter } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import Image from "next/image";
 import Link from "next/link";
+import { HugeiconsIcon } from "@hugeicons/react";
 import {
-  Heart,
-  ShoppingCart,
-  Star,
-  HeartOff,
-  AlertCircle,
-  Info,
-  Upload,
-  Eye,
-  ArrowRight,
-  Sparkles,
-  Search,
-  ChevronLeft,
-  ChevronRight,
-  TrendingUp,
-  Clock,
-  Shield,
-  Truck,
-  Award,
-  Filter,
-  X,
-} from "lucide-react";
+  Search01Icon,
+  ShoppingCart01Icon,
+  ShoppingBasket01Icon,
+  FavouriteIcon,
+  EyeIcon,
+  Alert01Icon,
+  InformationCircleIcon,
+  Upload01Icon,
+  Leaf01Icon,
+  PackageIcon,
+  Cancel01Icon,
+  ShuffleIcon,
+  Shield01Icon,
+} from "@hugeicons/core-free-icons";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import { toast } from "sonner";
 import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { useRouter, useSearchParams } from "next/navigation";
 import ConsentUpload from "@/components/ConsentUpload";
-import { cartStore } from "@/lib/cart-store";
-import { Badge } from "@/components/ui/badge";
-import { motion, AnimatePresence } from "framer-motion";
+import { cn } from "@/lib/utils";
 import {
   evaluateCartExtensionDecision,
   fetchCreditSnapshot,
@@ -73,11 +50,11 @@ interface Product {
   currency: string;
   isPerishable: boolean;
   active: boolean;
-  rating?: number;
-  reviewCount?: number;
-  category?: string;
-  tags?: string[];
-  discount?: number;
+  /** API returns a category object; `categoryName` is the flattened label we render */
+  category?: { id: string; name: string; slug: string } | string | null;
+  categoryName?: string;
+  unit?: string;
+  packageType?: string;
   createdAt?: string;
 }
 
@@ -90,15 +67,179 @@ interface ExtensionConfirmState {
   cartTotal: number;
 }
 
-// Helper function to shuffle array randomly
-const shuffleArray = (array: any[]) => {
-  const shuffled = [...array];
-  for (let i = shuffled.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+// Stable pseudo-random ordering: the same seed always produces the same shuffle,
+// so the grid does not jump around while you type in the search box.
+function shuffleRank(id: string, seed: number) {
+  let hash = seed;
+  for (let i = 0; i < id.length; i++) {
+    hash = (hash * 31 + id.charCodeAt(i)) | 0;
   }
-  return shuffled;
+  return hash;
+}
+
+const ELIGIBILITY_NOTICE_KEY = "enugu-market:eligibility-notice";
+
+const formatNaira = (amount: number, currency = "NGN") =>
+  new Intl.NumberFormat("en-NG", {
+    style: "currency",
+    currency: currency || "NGN",
+    currencyDisplay: "narrowSymbol",
+    maximumFractionDigits: 0,
+  }).format(amount);
+
+/* --------------------------------------------------------------- product card */
+
+type ProductCardProps = {
+  product: Product;
+  isRegularUser: boolean;
+  isAdmin: boolean;
+  isAgent: boolean;
+  isSignedIn: boolean;
+  isWishlisted: boolean;
+  isWishlistLoading: boolean;
+  isAddingToCart: boolean;
+  cartAllowed: boolean;
+  complianceMessage: string;
+  onToggleWishlist: (productId: string, productName: string) => void;
+  onAddToCart: (product: Product) => void;
 };
+
+function ProductThumb({ product }: { product: Product }) {
+  const [broken, setBroken] = useState(false);
+
+  if (!product.product_image || broken) {
+    return (
+      <div className="flex h-full w-full items-center justify-center bg-slate-50 text-slate-300">
+        <HugeiconsIcon icon={ShoppingBasket01Icon} size={34} strokeWidth={1.3} />
+      </div>
+    );
+  }
+
+  return (
+    <Image
+      src={product.product_image}
+      alt={product.name}
+      fill
+      sizes="(max-width: 640px) 50vw, (max-width: 1280px) 25vw, 20vw"
+      className="object-contain p-3"
+      onError={() => setBroken(true)}
+    />
+  );
+}
+
+function ProductCard({
+  product,
+  isRegularUser,
+  isAdmin,
+  isAgent,
+  isSignedIn,
+  isWishlisted,
+  isWishlistLoading,
+  isAddingToCart,
+  cartAllowed,
+  complianceMessage,
+  onToggleWishlist,
+  onAddToCart,
+}: ProductCardProps) {
+  const detailsHref = `/employee-dashboard/products/${product.id}`;
+
+  return (
+    <article className="relative flex flex-col border border-slate-200 bg-white transition-colors hover:border-brand-600">
+      <div className="relative aspect-square w-full">
+        <ProductThumb product={product} />
+
+        {isRegularUser && (
+          <button
+            type="button"
+            onClick={() => onToggleWishlist(product.id, product.name)}
+            disabled={isWishlistLoading || !cartAllowed}
+            title={cartAllowed ? "Save for later" : complianceMessage}
+            className={cn(
+              "absolute right-2 top-2 rounded-full bg-white/90 p-1.5 disabled:opacity-40",
+              isWishlisted ? "text-red-600" : "text-slate-400 hover:text-red-600"
+            )}
+          >
+            <HugeiconsIcon icon={FavouriteIcon} size={17} strokeWidth={1.8} />
+          </button>
+        )}
+      </div>
+
+      <div className="flex flex-1 flex-col border-t border-slate-100 p-3">
+        <h3 className="line-clamp-2 min-h-10 text-[13px] leading-5 text-slate-700">
+          {product.name}
+        </h3>
+
+        <p className="mt-1.5 text-base font-semibold text-slate-900">
+          {formatNaira(product.basePrice, product.currency)}
+        </p>
+
+        <p className="mt-0.5 flex items-center gap-1 text-[11px] text-slate-500">
+          {product.unit && <span>per {product.unit.toLowerCase()}</span>}
+          {product.unit && <span aria-hidden>·</span>}
+          <HugeiconsIcon
+            icon={product.isPerishable ? Leaf01Icon : PackageIcon}
+            size={12}
+            strokeWidth={2}
+          />
+          {product.isPerishable ? "Fresh" : "Pantry"}
+        </p>
+
+        <div className="mt-3 flex items-center gap-2">
+          {isRegularUser && (
+            <button
+              type="button"
+              onClick={() => onAddToCart(product)}
+              disabled={!cartAllowed || isAddingToCart}
+              title={cartAllowed ? undefined : complianceMessage}
+              className="flex h-9 flex-1 items-center justify-center gap-1.5 rounded-sm bg-brand-700 text-[13px] font-medium text-white hover:bg-brand-800 disabled:bg-slate-200 disabled:text-slate-500"
+            >
+              <HugeiconsIcon icon={ShoppingCart01Icon} size={16} strokeWidth={1.8} />
+              {isAddingToCart ? "Adding..." : "Add to cart"}
+            </button>
+          )}
+
+          {!isSignedIn && (
+            <Link
+              href="/employee-login"
+              className="flex h-9 flex-1 items-center justify-center rounded-sm bg-brand-700 text-[13px] font-medium text-white hover:bg-brand-800"
+            >
+              Sign in to buy
+            </Link>
+          )}
+
+          {(isAdmin || isAgent) && (
+            <span className="flex h-9 flex-1 items-center justify-center rounded-sm bg-slate-100 text-[13px] text-slate-500">
+              {isAdmin ? "Admin view" : "Agent view"}
+            </span>
+          )}
+
+          {isRegularUser && (
+            <Link
+              href={detailsHref}
+              title="View details"
+              className="flex h-9 w-9 items-center justify-center rounded-sm border border-slate-300 text-slate-600 hover:border-brand-600 hover:text-brand-700"
+            >
+              <HugeiconsIcon icon={EyeIcon} size={17} strokeWidth={1.8} />
+            </Link>
+          )}
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function CardSkeleton() {
+  return (
+    <div className="border border-slate-200 bg-white">
+      <div className="aspect-square w-full animate-pulse bg-slate-100" />
+      <div className="space-y-2 p-3">
+        <div className="h-3 w-4/5 animate-pulse bg-slate-100" />
+        <div className="h-3 w-2/5 animate-pulse bg-slate-100" />
+        <div className="h-9 w-full animate-pulse bg-slate-100" />
+      </div>
+    </div>
+  );
+}
 
 const ProductInstance = () => {
   const [wishlistItems, setWishlistItems] = useState<string[]>([]);
@@ -106,7 +247,6 @@ const ProductInstance = () => {
   const [isAddingToCart, setIsAddingToCart] = useState(false);
   const { data: clientSession } = useSession();
   const [serverUser, setServerUser] = useState<any>(null);
-  const [isLoadingUser, setIsLoadingUser] = useState(true);
   const [complianceData, setComplianceData] = useState<any>(null);
   const [showComplianceDialog, setShowComplianceDialog] = useState(false);
   const [extensionConfirm, setExtensionConfirm] = useState<ExtensionConfirmState>({
@@ -122,43 +262,56 @@ const ProductInstance = () => {
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [perishableFilter, setPerishableFilter] = useState<string>("all");
   const [sortOption, setSortOption] = useState<string>("random");
+  const [shuffleSeed, setShuffleSeed] = useState(1);
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
-  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
-  const [categories, setCategories] = useState<string[]>([]);
-  
-  // Refs for carousels
-  const featuredCarouselRef = useRef<HTMLDivElement>(null);
-  const newArrivalsCarouselRef = useRef<HTMLDivElement>(null);
-  const trendingCarouselRef = useRef<HTMLDivElement>(null);
+  const [visibleCount, setVisibleCount] = useState(24);
+  const [showEligibilityNotice, setShowEligibilityNotice] = useState(false);
 
   const router = useRouter();
+  const searchParams = useSearchParams();
   const queryClient = useQueryClient();
+
+  // The header search box and nav links drive the grid through the URL
+  useEffect(() => {
+    setSearchQuery(searchParams.get("q") || "");
+    setPerishableFilter(searchParams.get("type") || "all");
+    setVisibleCount(24);
+  }, [searchParams]);
 
   // Fetch user session
   useEffect(() => {
     fetch("/api/auth/session")
       .then((res) => res.json())
-      .then((data) => {
-        setServerUser(data);
-        setIsLoadingUser(false);
-      })
-      .catch((err) => {
-        console.error("Session error:", err);
-        setIsLoadingUser(false);
-      });
+      .then((data) => setServerUser(data))
+      .catch((err) => console.error("Session error:", err));
   }, []);
 
   const user = clientSession?.user || serverUser?.user;
-  
-  // Check user role
+
   const isAdmin = user?.role === "super_admin";
   const isAgent = user?.role === "fulfillment_officer";
   const isRegularUser = user?.role === "user";
 
-  // Set returnUrl after component mounts (client-side only)
   useEffect(() => {
     setReturnUrl(window.location.pathname);
+    setShuffleSeed(Math.floor(Math.random() * 100000));
+
+    try {
+      setShowEligibilityNotice(localStorage.getItem(ELIGIBILITY_NOTICE_KEY) !== "dismissed");
+    } catch {
+      // private browsing or storage disabled - just show it
+      setShowEligibilityNotice(true);
+    }
   }, []);
+
+  const dismissEligibilityNotice = () => {
+    setShowEligibilityNotice(false);
+    try {
+      localStorage.setItem(ELIGIBILITY_NOTICE_KEY, "dismissed");
+    } catch {
+      // nothing to persist to; it will show again next visit
+    }
+  };
 
   const { data: products, isLoading: isLoadingProducts } = useQuery({
     queryKey: ["featured-products"],
@@ -167,153 +320,146 @@ const ProductInstance = () => {
       const fallbackBaseUrl = "https://backend-api.enugufoodmarket.com/api/v1";
       const allowProdFallback = process.env.NEXT_PUBLIC_ALLOW_PROD_FALLBACK === "true";
 
-      console.log(`[Products] Fetching from: ${primaryBaseUrl}/products?limit=50`);
-      console.log(`[Products] Fallback enabled: ${allowProdFallback} (NEXT_PUBLIC_ALLOW_PROD_FALLBACK=${process.env.NEXT_PUBLIC_ALLOW_PROD_FALLBACK})`);
-
       try {
         let response;
 
         try {
           response = await axios.get(`${primaryBaseUrl}/products?limit=50`);
-          console.log(`[Products] Success: ${response.status}, items: ${response.data?.data?.length ?? 0}`);
         } catch (primaryError: unknown) {
           const httpStatus = axios.isAxiosError(primaryError) ? primaryError.response?.status : undefined;
           const errMsg = axios.isAxiosError(primaryError) ? primaryError.message : String(primaryError);
-          const responseData = axios.isAxiosError(primaryError) ? primaryError.response?.data : undefined;
-          const requestUrl = axios.isAxiosError(primaryError) ? primaryError.config?.url : undefined;
-          const requestParams = axios.isAxiosError(primaryError) ? primaryError.config?.params : undefined;
-          const responseHeaders = axios.isAxiosError(primaryError) ? primaryError.response?.headers : undefined;
-          console.error(`[Products] Primary failed — status: ${httpStatus ?? 'network error'}, message: ${errMsg}`);
-          console.error('[Products] Failure details:', {
-            url: requestUrl,
-            params: requestParams,
-            responseData,
-            requestId: responseHeaders?.['x-request-id'],
-            rateLimitRemaining: responseHeaders?.['x-ratelimit-remaining'],
-          });
+          console.error(`[Products] Primary failed — status: ${httpStatus ?? "network error"}, message: ${errMsg}`);
 
           const shouldFallback =
             allowProdFallback &&
             httpStatus === 500 &&
             primaryBaseUrl.includes("backend-staging.enugufoodmarket.com");
 
-          console.log(`[Products] Should fallback: ${shouldFallback}`);
-
           if (!shouldFallback) {
-            console.error('[Products] No fallback — rethrowing. Set NEXT_PUBLIC_ALLOW_PROD_FALLBACK=true to enable fallback.');
             throw primaryError;
           }
 
-          console.warn(`[Products] Falling back to: ${fallbackBaseUrl}/products?limit=50`);
           response = await axios.get(`${fallbackBaseUrl}/products?limit=50`);
-          console.log(`[Products] Fallback success: ${response.status}, items: ${response.data?.data?.length ?? 0}`);
           toast.warning("Staging products endpoint is unavailable. Showing production product feed.");
         }
 
-        // Add mock ratings and categories for visual appeal
-        const productsWithMetadata = response.data.data.map((product: Product) => ({
+        const raw = (response.data.data as Product[]) || [];
+        return raw.map((product) => ({
           ...product,
-          rating: Math.floor(Math.random() * 2) + 4, // Random rating between 4-5
-          reviewCount: Math.floor(Math.random() * 50) + 10, // Random reviews between 10-60
-          category: ["Fresh Produce", "Dairy", "Bakery", "Beverages", "Snacks"][Math.floor(Math.random() * 5)],
-          tags: [["bestseller"], ["new"], ["organic"], ["local"]][Math.floor(Math.random() * 4)],
-          discount: Math.random() > 0.7 ? Math.floor(Math.random() * 30) + 10 : 0,
-          createdAt: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString(),
+          categoryName:
+            typeof product.category === "string"
+              ? product.category
+              : product.category?.name || undefined,
         }));
-        
-        // Extract unique categories
-        const uniqueCategories = Array.from(new Set(productsWithMetadata.map((p: Product) => p.category))) as string[];
-        setCategories(uniqueCategories);
-        
-        return productsWithMetadata as Product[];
       } catch (error) {
         console.error("Failed to fetch products:", error);
         toast.error("Failed to load products");
-        return [];
+        return [] as Product[];
       }
     },
   });
 
-  // Filter and sort products
-  const filteredProducts = products?.filter((product: Product) => {
-    const matchesSearch = searchQuery === "" || 
-      product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      product.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (product.tags && product.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase())));
-    
-    const matchesPerishable = perishableFilter === "all" || 
-      (perishableFilter === "perishable" && product.isPerishable) ||
-      (perishableFilter === "non-perishable" && !product.isPerishable);
-    
-    const matchesCategory = selectedCategory === "all" || product.category === selectedCategory;
-    
-    return matchesSearch && matchesPerishable && matchesCategory;
-  }).sort((a: Product, b: Product) => {
-    switch (sortOption) {
-      case "name-asc":
-        return a.name.localeCompare(b.name);
-      case "name-desc":
-        return b.name.localeCompare(a.name);
-      case "price-asc":
-        return a.basePrice - b.basePrice;
-      case "price-desc":
-        return b.basePrice - a.basePrice;
-      case "rating":
-        return (b.rating || 0) - (a.rating || 0);
-      case "newest":
-        return new Date(b.createdAt || "").getTime() - new Date(a.createdAt || "").getTime();
-      case "random":
-        return 0;
-      default:
-        return 0;
-    }
-  });
+  // Only real categories from the API, minus the ones the freshness filters already cover
+  const categories = useMemo(() => {
+    const fromApi = Array.from(
+      new Set((products || []).map((p) => p.categoryName).filter(Boolean) as string[])
+    );
+    // The freshness chips already cover the perishable/non-perishable split
+    return fromApi
+      .filter((name) => !/perishable/i.test(name))
+      .sort((a, b) => a.localeCompare(b));
+  }, [products]);
 
-  // Apply random shuffle if random sort is selected
-  const finalProducts = sortOption === "random" && filteredProducts 
-    ? shuffleArray(filteredProducts) 
-    : filteredProducts;
+  const countFor = (predicate: (p: Product) => boolean) =>
+    (products || []).filter(predicate).length;
 
-  // Separate products for carousels
-  const newArrivals = products?.filter(p => 
-    p.createdAt && new Date(p.createdAt) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
-  ).slice(0, 10) || [];
-  
-  const trendingProducts = products?.filter(p => 
-    p.tags?.includes("bestseller") || (p.rating && p.rating >= 4.5)
-  ).slice(0, 10) || [];
+  const filteredProducts = useMemo(() => {
+    const list = (products || []).filter((product) => {
+      const query = searchQuery.trim().toLowerCase();
+      const matchesSearch =
+        query === "" ||
+        product.name?.toLowerCase().includes(query) ||
+        product.description?.toLowerCase().includes(query);
 
-  const featuredProducts = products?.slice(0, 10) || [];
+      const matchesPerishable =
+        perishableFilter === "all" ||
+        (perishableFilter === "perishable" && product.isPerishable) ||
+        (perishableFilter === "non-perishable" && !product.isPerishable);
 
-  // Fetch cart count
-  useEffect(() => {
-    if (user?.token && isRegularUser) {
-      const fetchCartCount = async () => {
-        try {
-          const res = await axios.get(
-            `${process.env.NEXT_PUBLIC_API_BASE_URL}/user/cart`,
-            { 
-              headers: { Authorization: `Bearer ${user.token}` },
-              timeout: 10000
-            }
-          );
-          
-          if (res.data && res.data.data) {
-            const cartItems = res.data.data?.items || [];
-            cartStore.setCartCount(cartItems.length);
-          }
-        } catch (error: any) {
-          if (error.response?.status !== 500) {
-            console.error("Failed to fetch cart count", error);
-          }
-          cartStore.setCartCount(0);
-        }
-      };
-      fetchCartCount();
-    } else {
-      cartStore.setCartCount(0);
-    }
-  }, [user, isRegularUser]);
+      const matchesCategory =
+        selectedCategory === "all" || product.categoryName === selectedCategory;
+
+      return matchesSearch && matchesPerishable && matchesCategory;
+    });
+
+    return [...list].sort((a, b) => {
+      switch (sortOption) {
+        case "name-asc":
+          return a.name.localeCompare(b.name);
+        case "name-desc":
+          return b.name.localeCompare(a.name);
+        case "price-asc":
+          return a.basePrice - b.basePrice;
+        case "price-desc":
+          return b.basePrice - a.basePrice;
+        case "newest":
+          return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+        case "random":
+          return shuffleRank(a.id, shuffleSeed) - shuffleRank(b.id, shuffleSeed);
+        default:
+          return 0;
+      }
+    });
+  }, [products, searchQuery, perishableFilter, selectedCategory, sortOption, shuffleSeed]);
+
+  const sidebarFilters = [
+    {
+      label: "All products",
+      count: products?.length || 0,
+      isActive: (type: string, category: string) => type === "all" && category === "all",
+      apply: () => {
+        setPerishableFilter("all");
+        setSelectedCategory("all");
+      },
+    },
+    {
+      label: "Fresh produce",
+      count: countFor((p) => p.isPerishable),
+      isActive: (type: string) => type === "perishable",
+      apply: () => {
+        setPerishableFilter("perishable");
+        setSelectedCategory("all");
+      },
+    },
+    {
+      label: "Pantry staples",
+      count: countFor((p) => !p.isPerishable),
+      isActive: (type: string) => type === "non-perishable",
+      apply: () => {
+        setPerishableFilter("non-perishable");
+        setSelectedCategory("all");
+      },
+    },
+    ...categories.map((category) => ({
+      label: category,
+      count: countFor((p) => p.categoryName === category),
+      isActive: (_type: string, selected: string) => selected === category,
+      apply: () => {
+        setSelectedCategory(category);
+        setPerishableFilter("all");
+      },
+    })),
+  ];
+
+  const hasActiveFilters =
+    searchQuery !== "" || perishableFilter !== "all" || selectedCategory !== "all";
+
+  const clearFilters = () => {
+    setSearchQuery("");
+    setPerishableFilter("all");
+    setSelectedCategory("all");
+    router.push("/");
+  };
 
   // Fetch compliance data and wishlist items (only for regular users)
   useEffect(() => {
@@ -321,7 +467,7 @@ const ProductInstance = () => {
       axios
         .get(`${process.env.NEXT_PUBLIC_API_BASE_URL}/user/get-compliance`, {
           headers: { Authorization: `Bearer ${user.token}` },
-          timeout: 10000
+          timeout: 10000,
         })
         .then((response) => {
           setComplianceData(response.data.data);
@@ -335,9 +481,9 @@ const ProductInstance = () => {
         try {
           const res = await axios.get(
             `${process.env.NEXT_PUBLIC_API_BASE_URL}/user/wishlist`,
-            { 
+            {
               headers: { Authorization: `Bearer ${user.token}` },
-              timeout: 10000
+              timeout: 10000,
             }
           );
           const items = res.data.data.map((item: any) => item.productId);
@@ -355,10 +501,8 @@ const ProductInstance = () => {
     if (isAdmin) return "Admin users cannot add items to cart";
     if (isAgent) return "Agents cannot add items to cart";
     if (!user) return "Please login to access this feature";
-    if (!complianceData)
-      return "Submit compliance form to enable cart features";
-    if (complianceData?.status === "PENDING")
-      return "Compliance pending admin approval";
+    if (!complianceData) return "Submit compliance form to enable cart features";
+    if (complianceData?.status === "PENDING") return "Compliance pending admin approval";
     if (complianceData?.status === "DENIED")
       return "Your compliance form was rejected. Please submit a new one.";
     return "";
@@ -389,9 +533,7 @@ const ProductInstance = () => {
     if (!user) {
       toast.error("Please login to manage wishlist");
       router.push(
-        `/employee-login?returnUrl=${encodeURIComponent(
-          window.location.pathname
-        )}`
+        `/employee-login?returnUrl=${encodeURIComponent(window.location.pathname)}`
       );
       return;
     }
@@ -409,9 +551,7 @@ const ProductInstance = () => {
 
     if (complianceData?.status === "DENIED") {
       setShowComplianceDialog(true);
-      toast.error(
-        "Your compliance form was rejected. Please submit a new one."
-      );
+      toast.error("Your compliance form was rejected. Please submit a new one.");
       return;
     }
 
@@ -427,9 +567,9 @@ const ProductInstance = () => {
       if (isCurrentlyInWishlist) {
         const wishlistRes = await axios.get(
           `${process.env.NEXT_PUBLIC_API_BASE_URL}/user/wishlist`,
-          { 
+          {
             headers: { Authorization: `Bearer ${user.token}` },
-            timeout: 10000
+            timeout: 10000,
           }
         );
         const itemToRemove = wishlistRes.data.data.find(
@@ -439,9 +579,9 @@ const ProductInstance = () => {
         if (itemToRemove) {
           await axios.delete(
             `${process.env.NEXT_PUBLIC_API_BASE_URL}/user/wishlist/remove-from-wishlist/${itemToRemove.id}`,
-            { 
+            {
               headers: { Authorization: `Bearer ${user.token}` },
-              timeout: 10000
+              timeout: 10000,
             }
           );
         }
@@ -449,9 +589,9 @@ const ProductInstance = () => {
         await axios.post(
           `${process.env.NEXT_PUBLIC_API_BASE_URL}/user/wishlist/add-to-wishlist`,
           payload,
-          { 
+          {
             headers: { Authorization: `Bearer ${user.token}` },
-            timeout: 10000
+            timeout: 10000,
           }
         );
       }
@@ -490,9 +630,7 @@ const ProductInstance = () => {
     if (!user) {
       toast.error("Please login to add items to cart");
       router.push(
-        `/employee-login?returnUrl=${encodeURIComponent(
-          window.location.pathname
-        )}`
+        `/employee-login?returnUrl=${encodeURIComponent(window.location.pathname)}`
       );
       return;
     }
@@ -515,9 +653,7 @@ const ProductInstance = () => {
 
     if (complianceData?.status === "DENIED") {
       setShowComplianceDialog(true);
-      toast.error(
-        "Your compliance form was rejected. Please submit a new one."
-      );
+      toast.error("Your compliance form was rejected. Please submit a new one.");
       return;
     }
 
@@ -536,12 +672,13 @@ const ProductInstance = () => {
             Authorization: `Bearer ${user.token}`,
             "Content-Type": "application/json",
           },
-          timeout: 10000
+          timeout: 10000,
         }
       );
 
       if (response.status === 200 || response.status === 201) {
-        cartStore.incrementCartCount();
+        // refresh every cart badge on screen straight away
+        await queryClient.invalidateQueries({ queryKey: ["cart"] });
 
         const decision = await evaluateCartExtensionDecision(user.token);
         if (decision?.insufficientCredit) {
@@ -585,7 +722,7 @@ const ProductInstance = () => {
       axios
         .get(`${process.env.NEXT_PUBLIC_API_BASE_URL}/user/get-compliance`, {
           headers: { Authorization: `Bearer ${user.token}` },
-          timeout: 10000
+          timeout: 10000,
         })
         .then((response) => {
           setComplianceData(response.data.data);
@@ -597,38 +734,6 @@ const ProductInstance = () => {
         });
     }
   };
-
-  // Carousel navigation functions
-  const scrollCarousel = (ref: React.RefObject<HTMLDivElement | null>, direction: 'left' | 'right') => {
-    if (ref.current) {
-      const scrollAmount = 300;
-      ref.current.scrollBy({
-        left: direction === 'left' ? -scrollAmount : scrollAmount,
-        behavior: 'smooth'
-      });
-    }
-  };
-
-  // Function to render star ratings
-  const renderStars = (rating: number) => {
-    return Array(5)
-      .fill(0)
-      .map((_, i) => (
-        <Star
-          key={i}
-          size={14}
-          className={
-            i < rating ? "fill-yellow-400 text-yellow-400" : "text-gray-300"
-          }
-        />
-      ));
-  };
-
-  const formatCurrency = (amount: number) =>
-    new Intl.NumberFormat("en-NG", {
-      style: "currency",
-      currency: "NGN",
-    }).format(amount);
 
   const handleContinueWithExtension = () => {
     setExtensionConfirm((prev) => ({ ...prev, open: false }));
@@ -643,7 +748,10 @@ const ProductInstance = () => {
 
     try {
       setIsRevertingCartItem(true);
-      const removed = await removeLatestCartItemByProductId(user.token, extensionConfirm.productId);
+      const removed = await removeLatestCartItemByProductId(
+        user.token,
+        extensionConfirm.productId
+      );
       if (removed) {
         toast.success(`${extensionConfirm.productName} removed from cart.`);
       } else {
@@ -656,649 +764,340 @@ const ProductInstance = () => {
     }
   };
 
-  // Function to handle image errors
-  const handleImageError = (
-    e: React.SyntheticEvent<HTMLImageElement, Event>
-  ) => {
-    const target = e.target as HTMLImageElement;
-    target.src = "/placeholder-product.jpg";
-  };
-
-  // Product Card Component
-  const ProductCard = ({ product }: { product: Product }) => (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.35 }}
-      whileHover={{ y: -8 }}
-      className="h-full"
-    >
-      <Card className="group h-full overflow-hidden rounded-[1.6rem] border border-slate-200 bg-white shadow-[0_4px_20px_rgba(15,23,42,0.07)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_12px_36px_rgba(15,23,42,0.13)]">
-        <CardHeader className="p-0 relative">
-          <div className="relative h-56 w-full overflow-hidden bg-slate-50">
-            <Image
-              src={product.product_image || "/placeholder-product.jpg"}
-              alt={product.name}
-              fill
-              className="h-full w-full object-contain p-4 transition-transform duration-500 group-hover:scale-110"
-              onError={handleImageError}
-              style={{ objectFit: "contain" }}
-            />
-            
-            {/* Badges */}
-            <div className="absolute top-3 left-3 flex flex-col gap-2">
-              {product.discount && product.discount > 0 && (
-                <Badge className="border-0 bg-rose-600 text-white shadow-md hover:bg-rose-700">
-                  -{product.discount}%
-                </Badge>
-              )}
-              {product.tags?.includes("bestseller") && (
-                <Badge className="border-0 bg-amber-500 text-white shadow-md hover:bg-amber-600">
-                  Bestseller
-                </Badge>
-              )}
-              {/* {product.isPerishable && (
-                <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                  <Clock className="h-3 w-3 mr-1" />
-                  Fresh
-                </Badge>
-              )} */}
-            </div>
-
-            {/* Wishlist button - hidden for admin/agent */}
-            {isRegularUser && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={() => toggleWishlist(product.id, product.name)}
-                    className="group/wishlist absolute right-3 top-3 z-10 rounded-full border border-white/70 bg-white/90 p-2 shadow-lg transition-all hover:bg-white"
-                    disabled={isWishlistLoading || !isCartActionAllowed()}
-                  >
-                    {wishlistItems.includes(product.id) ? (
-                      <HeartOff size={18} className="text-rose-500" />
-                    ) : (
-                      <Heart size={18} className="text-slate-600 group-hover/wishlist:text-rose-500" />
-                    )}
-                  </button>
-                </TooltipTrigger>
-                {!isCartActionAllowed() && (
-                  <TooltipContent side="top" className="max-w-xs">
-                    <div className="flex items-center">
-                      <Info className="h-4 w-4 mr-2 text-yellow-500" />
-                      <p>{getComplianceStatusMessage()}</p>
-                    </div>
-                  </TooltipContent>
-                )}
-              </Tooltip>
-            )}
-
-            {/* Show info icon for admin/agent instead of wishlist */}
-            {(isAdmin || isAgent) && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className="absolute right-3 top-3 rounded-full border border-white/70 bg-white/90 p-2 shadow-lg">
-                    <Info size={18} className="text-slate-400" />
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent side="top">
-                  <p>{isAdmin ? "Admin view" : "Agent view"}</p>
-                </TooltipContent>
-              </Tooltip>
-            )}
-          </div>
-        </CardHeader>
-        <CardContent className="flex flex-grow flex-col p-5 pt-4">
-          <div className="flex items-start justify-between mb-2">
-            <h3 className="flex-1 line-clamp-1 text-base font-bold text-slate-900 transition-colors group-hover:text-emerald-700">
-              {product.name}
-            </h3>
-            {/* {product.category && (
-              <Badge variant="secondary" className="ml-2 text-xs">
-                {product.category}
-              </Badge>
-            )} */}
-          </div>
-          
-          <p className="mb-3 line-clamp-2 text-xs leading-5 text-slate-600">{product.description}</p>
-
-          {/* Star rating */}
-          <div className="mb-3 flex items-center rounded-full bg-amber-50 px-2.5 py-1.5 w-fit border border-amber-100">
-            <div className="flex">
-              {renderStars(product.rating || 5)}
-            </div>
-          </div>
-
-          <div className="mt-auto">
-            <div className="mb-3">
-              {product.discount ? (
-                <div className="flex items-center gap-2">
-                  <span className="text-lg font-bold text-slate-950">
-                    {new Intl.NumberFormat("en-NG", {
-                      style: "currency",
-                      currency: product.currency,
-                      currencyDisplay: "narrowSymbol",
-                    }).format(product.basePrice * (1 - product.discount / 100))}
-                  </span>
-                  <span className="text-sm text-slate-400 line-through">
-                    {new Intl.NumberFormat("en-NG", {
-                      style: "currency",
-                      currency: product.currency,
-                    }).format(product.basePrice)}
-                  </span>
-                </div>
-              ) : (
-                <span className="text-lg font-bold text-slate-950">
-                  {new Intl.NumberFormat("en-NG", {
-                    style: "currency",
-                    currency: product.currency,
-                    currencyDisplay: "narrowSymbol",
-                  }).format(product.basePrice)}
-                </span>
-              )}
-            </div>
-          </div>
-        </CardContent>
-        <CardFooter className="p-5 pt-0">
-          <div className="flex gap-2 w-full">
-            {/* Add to Cart button - only for regular users */}
-            {isRegularUser && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className="flex-1">
-                    <Button
-                      className="h-10 w-full rounded-full bg-emerald-700 text-xs font-bold tracking-wide text-white transition-all hover:scale-105 hover:bg-emerald-800"
-                      onClick={() => addToCart(product)}
-                      disabled={!isCartActionAllowed() || isAddingToCart}
-                    >
-                      {isAddingToCart ? (
-                        <>
-                          <span className="animate-spin mr-1">⏳</span>
-                          Adding...
-                        </>
-                      ) : (
-                        <>
-                          <ShoppingCart className="h-3 w-3 mr-1" />
-                          ADD TO CART
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                </TooltipTrigger>
-                {!isCartActionAllowed() && (
-                  <TooltipContent side="top" className="max-w-xs">
-                    <div className="flex items-center">
-                      <Info className="h-4 w-4 mr-2 text-yellow-500" />
-                      <p>{getComplianceStatusMessage()}</p>
-                    </div>
-                  </TooltipContent>
-                )}
-              </Tooltip>
-            )}
-
-            {/* For admin/agent, show disabled button with info */}
-            {(isAdmin || isAgent) && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className="flex-1">
-                    <Button
-                      className="h-10 w-full cursor-not-allowed rounded-full bg-slate-300 text-xs font-bold text-slate-600"
-                      disabled
-                    >
-                      <ShoppingCart className="h-3 w-3 mr-1" />
-                      {isAdmin ? "ADMIN" : "AGENT"}
-                    </Button>
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent side="top">
-                  <p>{isAdmin ? "Admins cannot add to cart" : "Agents cannot add to cart"}</p>
-                </TooltipContent>
-              </Tooltip>
-            )}
-
-            {/* Details button - only accessible for regular users, others see disabled */}
-            {isRegularUser ? (
-              <Button
-                asChild
-                variant="outline"
-                className="h-10 flex-1 rounded-full border-emerald-700/35 bg-white text-xs font-semibold text-emerald-700 transition-all hover:scale-105 hover:border-emerald-700 hover:bg-emerald-50"
-              >
-                <Link href={`/employee-dashboard/products/${product.id}`}>
-                  <Eye className="h-3 w-3 mr-1" />
-                  Details
-                </Link>
-              </Button>
-            ) : (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="h-10 flex-1 cursor-not-allowed rounded-full border-slate-300 text-xs text-slate-400"
-                    disabled
-                  >
-                    <Eye className="h-3 w-3 mr-1" />
-                    Details
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="top">
-                  <p>Login as employee to view details</p>
-                </TooltipContent>
-              </Tooltip>
-            )}
-          </div>
-        </CardFooter>
-      </Card>
-    </motion.div>
-  );
-
-  // Carousel Component
-  const ProductCarousel = ({ title, products, ref }: { title: string; products: Product[]; ref: React.RefObject<HTMLDivElement | null> }) => (
-    <div className="mb-12">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          {/* <div className="p-2 bg-orange-100 rounded-lg">
-            <Icon className="h-5 w-5 text-orange-600" />
-          </div> */}
-          <h2 className="text-2xl font-bold text-gray-900">{title}</h2>
-        </div>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="icon"
-            className="rounded-full border-gray-300 hover:border-orange-500 hover:bg-orange-50"
-            onClick={() => scrollCarousel(ref, 'left')}
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="outline"
-            size="icon"
-            className="rounded-full border-gray-300 hover:border-orange-500 hover:bg-orange-50"
-            onClick={() => scrollCarousel(ref, 'right')}
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
-      <div
-        ref={ref}
-        className="flex gap-6 overflow-x-auto pb-6 scrollbar-hide snap-x snap-mandatory"
-        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-      >
-        {products.map((product) => (
-          <div key={product.id} className="min-w-[280px] max-w-[280px] snap-start">
-            <ProductCard product={product} />
-          </div>
-        ))}
-      </div>
-    </div>
-  );
+  const shownProducts = filteredProducts.slice(0, visibleCount);
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(22,101,52,0.12),_transparent_22%),radial-gradient(circle_at_top_right,_rgba(245,158,11,0.12),_transparent_20%),linear-gradient(180deg,_rgba(248,244,234,0.72)_0%,_rgba(255,255,255,0.96)_18%,_#ffffff_100%)]">
-      <TooltipProvider>
-       
+    <div className="mx-auto max-w-[1400px] px-4 py-5 lg:px-6">
+      <div className="mb-4 space-y-2">
 
-        {/* Features Section - Visible to all */}
-        
-
-        {/* Role-based banners */}
         {isAdmin && (
-          <div className="container px-4 mx-auto py-6">
-            <div className="bg-purple-100 border-l-4 border-purple-500 text-purple-700 p-4 rounded-lg">
-              <div className="flex items-center">
-                <Info className="h-5 w-5 mr-2 flex-shrink-0" />
-                <p>You are viewing as Administrator. Cart and wishlist features are disabled.</p>
-              </div>
-            </div>
-          </div>
+          <p className="flex items-center gap-2 border-l-4 border-violet-500 bg-violet-50 px-3 py-2.5 text-sm text-violet-900">
+            <HugeiconsIcon icon={InformationCircleIcon} size={17} strokeWidth={1.8} />
+            You are signed in as an administrator. Cart and wishlist are disabled.
+          </p>
         )}
 
         {isAgent && (
-          <div className="container px-4 mx-auto mb-6">
-            <div className="bg-blue-100 border-l-4 border-blue-500 text-blue-700 p-4 rounded-lg">
-              <div className="flex items-center">
-                <Info className="h-5 w-5 mr-2 flex-shrink-0" />
-                <p>You are viewing as Fulfillment Officer. Cart and wishlist features are disabled.</p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Compliance banners - only for regular users */}
-        {isRegularUser && !user && (
-          <div className="container px-4 mx-auto mb-6">
-            <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 rounded-lg">
-              <div className="flex items-center">
-                <AlertCircle className="h-5 w-5 mr-2 flex-shrink-0" />
-                <p>Please login to add items to cart and wishlist.</p>
-              </div>
-            </div>
-          </div>
+          <p className="flex items-center gap-2 border-l-4 border-sky-500 bg-sky-50 px-3 py-2.5 text-sm text-sky-900">
+            <HugeiconsIcon icon={InformationCircleIcon} size={17} strokeWidth={1.8} />
+            You are signed in as a fulfillment officer. Cart and wishlist are disabled.
+          </p>
         )}
 
         {isRegularUser && user && !complianceData && (
-          <div className="container px-4 mx-auto mb-6">
-            <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 rounded-lg">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <AlertCircle className="h-5 w-5 mr-2 flex-shrink-0" />
-                  <p>Please submit your compliance form to add items to cart.</p>
-                </div>
-                <Button
-                  onClick={() => setShowComplianceDialog(true)}
-                  className="bg-yellow-600 hover:bg-yellow-700 text-white"
-                  size="sm"
-                >
-                  <Upload className="h-4 w-4 mr-2" />
-                  Submit Compliance
-                </Button>
-              </div>
-            </div>
+          <div className="flex flex-wrap items-center gap-3 border-l-4 border-amber-500 bg-amber-50 px-3 py-2.5 text-sm text-amber-900">
+            <HugeiconsIcon icon={Alert01Icon} size={17} strokeWidth={1.8} />
+            Submit your compliance form before you can add items to your cart.
+            <button
+              onClick={() => setShowComplianceDialog(true)}
+              className="ml-auto flex items-center gap-1.5 rounded-sm bg-amber-600 px-3 py-1.5 text-[13px] font-medium text-white hover:bg-amber-700"
+            >
+              <HugeiconsIcon icon={Upload01Icon} size={15} strokeWidth={1.8} />
+              Submit form
+            </button>
           </div>
         )}
 
         {isRegularUser && user && complianceData?.status === "PENDING" && (
-          <div className="container px-4 mx-auto mb-6">
-            <div className="bg-blue-100 border-l-4 border-blue-500 text-blue-700 p-4 rounded-lg">
-              <div className="flex items-center">
-                <AlertCircle className="h-5 w-5 mr-2" />
-                <p>
-                  Your compliance form is pending admin approval. You cannot add
-                  items until approved.
-                </p>
-              </div>
-            </div>
-          </div>
+          <p className="flex items-center gap-2 border-l-4 border-sky-500 bg-sky-50 px-3 py-2.5 text-sm text-sky-900">
+            <HugeiconsIcon icon={Alert01Icon} size={17} strokeWidth={1.8} />
+            Your compliance form is awaiting approval. You can browse now and order once it is approved.
+          </p>
         )}
 
         {isRegularUser && user && complianceData?.status === "DENIED" && (
-          <div className="container px-4 mx-auto mb-6">
-            <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-lg">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <AlertCircle className="h-5 w-5 mr-2" />
-                  <div>
-                    <p className="font-semibold">Compliance Form Rejected</p>
-                    <p className="text-sm">
-                      Your compliance form was rejected. Please submit a new one.
-                    </p>
-                  </div>
-                </div>
-                <Button
-                  onClick={() => setShowComplianceDialog(true)}
-                  className="bg-red-600 hover:bg-red-700 text-white"
-                  size="sm"
-                >
-                  <Upload className="h-4 w-4 mr-2" />
-                  Submit New
-                </Button>
-              </div>
-            </div>
+          <div className="flex flex-wrap items-center gap-3 border-l-4 border-red-500 bg-red-50 px-3 py-2.5 text-sm text-red-900">
+            <HugeiconsIcon icon={Alert01Icon} size={17} strokeWidth={1.8} />
+            Your compliance form was rejected. Please submit a new one.
+            <button
+              onClick={() => setShowComplianceDialog(true)}
+              className="ml-auto flex items-center gap-1.5 rounded-sm bg-red-600 px-3 py-1.5 text-[13px] font-medium text-white hover:bg-red-700"
+            >
+              <HugeiconsIcon icon={Upload01Icon} size={15} strokeWidth={1.8} />
+              Submit new form
+            </button>
           </div>
         )}
+      </div>
 
-        {/* Carousels - Visible to all roles */}
-        <div className="container py-6 px-4 mx-auto">
-          {!isLoadingProducts && featuredProducts.length > 0 && (
-            <ProductCarousel 
-              title="Featured Products"  
-              products={featuredProducts} 
-              ref={featuredCarouselRef}
-            />
-          )}
+      <div className="flex gap-5">
+        <aside className="hidden w-56 shrink-0 lg:block">
+          <div className="border border-slate-200">
+            <h2 className="border-b border-slate-200 bg-slate-50 px-3 py-2.5 text-[12px] font-semibold uppercase tracking-wide text-slate-600">
+              Browse
+            </h2>
+            <ul className="py-1 text-sm">
+              {sidebarFilters.map((filter) => {
+                const active = filter.isActive(perishableFilter, selectedCategory);
+                return (
+                  <li key={filter.label}>
+                    <button
+                      onClick={filter.apply}
+                      className={cn(
+                        "flex w-full items-center justify-between px-3 py-2 text-left hover:bg-slate-50",
+                        active ? "font-medium text-brand-800" : "text-slate-700"
+                      )}
+                    >
+                      {filter.label}
+                      <span className="text-[12px] text-slate-400">{filter.count}</span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
 
-          {!isLoadingProducts && newArrivals.length > 0 && (
-            <ProductCarousel 
-              title="New Arrivals" 
-              products={newArrivals} 
-              ref={newArrivalsCarouselRef}
-            />
-          )}
+          <div className="mt-4 border border-slate-200 p-3 text-[13px] leading-6 text-slate-600">
+            <p className="mb-1.5 font-semibold text-slate-800">How payment works</p>
+            Orders are charged to your purchasing unit and recovered from your salary at 0%
+            interest. Monthly deductions never exceed one third of your pay.
+          </div>
+        </aside>
 
-          {!isLoadingProducts && trendingProducts.length > 0 && (
-            <ProductCarousel 
-              title="Trending Now"  
-              products={trendingProducts} 
-              ref={trendingCarouselRef}
-            />
+        <div className="min-w-0 flex-1">
+          <div className="mb-4 flex flex-wrap items-center gap-3 border border-slate-200 bg-white px-3 py-2.5">
+            <p className="text-sm text-slate-600">
+              {isLoadingProducts ? (
+                "Loading products..."
+              ) : (
+                <>
+                  <span className="font-semibold text-slate-900">{filteredProducts.length}</span>{" "}
+                  {filteredProducts.length === 1 ? "product" : "products"}
+                  {searchQuery && (
+                    <>
+                      {" for "}
+                      <span className="font-medium text-slate-900">{searchQuery}</span>
+                    </>
+                  )}
+                </>
+              )}
+            </p>
+
+            {hasActiveFilters && (
+              <button
+                onClick={clearFilters}
+                className="flex items-center gap-1 text-[13px] text-brand-700 hover:underline"
+              >
+                <HugeiconsIcon icon={Cancel01Icon} size={13} strokeWidth={2} />
+                Clear filters
+              </button>
+            )}
+
+            <div className="ml-auto flex items-center gap-2">
+              <label htmlFor="sort" className="hidden text-[13px] text-slate-500 sm:block">
+                Sort
+              </label>
+              <select
+                id="sort"
+                value={sortOption}
+                onChange={(e) => setSortOption(e.target.value)}
+                className="h-9 rounded-sm border border-slate-300 bg-white px-2 text-[13px] text-slate-700 outline-none focus:border-brand-600"
+              >
+                <option value="random">Random</option>
+                <option value="name-asc">Name A–Z</option>
+                <option value="name-desc">Name Z–A</option>
+                <option value="price-asc">Cheapest first</option>
+                <option value="price-desc">Most expensive</option>
+                <option value="newest">Recently added</option>
+              </select>
+
+              {sortOption === "random" && (
+                <button
+                  type="button"
+                  onClick={() => setShuffleSeed(Math.floor(Math.random() * 100000))}
+                  title="Shuffle products"
+                  className="flex h-9 items-center gap-1.5 rounded-sm border border-slate-300 px-2.5 text-[13px] text-slate-700 hover:border-brand-600 hover:text-brand-700"
+                >
+                  <HugeiconsIcon icon={ShuffleIcon} size={15} strokeWidth={1.8} />
+                  <span className="hidden sm:inline">Shuffle</span>
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* mobile filter row */}
+          <div className="mb-4 flex gap-2 overflow-x-auto lg:hidden">
+            {sidebarFilters.map((filter) => {
+              const active = filter.isActive(perishableFilter, selectedCategory);
+              return (
+                <button
+                  key={filter.label}
+                  onClick={filter.apply}
+                  className={cn(
+                    "shrink-0 rounded-sm border px-3 py-1.5 text-[13px]",
+                    active
+                      ? "border-brand-700 bg-brand-50 font-medium text-brand-800"
+                      : "border-slate-300 text-slate-700"
+                  )}
+                >
+                  {filter.label} ({filter.count})
+                </button>
+              );
+            })}
+          </div>
+
+          {isLoadingProducts ? (
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+              {Array.from({ length: 10 }).map((_, i) => (
+                <CardSkeleton key={i} />
+              ))}
+            </div>
+          ) : shownProducts.length > 0 ? (
+            <>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+                {shownProducts.map((product) => (
+                  <ProductCard
+                    key={product.id}
+                    product={product}
+                    isRegularUser={isRegularUser}
+                    isAdmin={isAdmin}
+                    isAgent={isAgent}
+                    isSignedIn={Boolean(user)}
+                    isWishlisted={wishlistItems.includes(product.id)}
+                    isWishlistLoading={isWishlistLoading}
+                    isAddingToCart={isAddingToCart}
+                    cartAllowed={isCartActionAllowed()}
+                    complianceMessage={getComplianceStatusMessage()}
+                    onToggleWishlist={toggleWishlist}
+                    onAddToCart={addToCart}
+                  />
+                ))}
+              </div>
+
+              {visibleCount < filteredProducts.length && (
+                <div className="mt-6 text-center">
+                  <button
+                    onClick={() => setVisibleCount((count) => count + 24)}
+                    className="h-10 rounded-sm border border-slate-300 px-6 text-sm font-medium text-slate-700 hover:border-brand-600 hover:text-brand-700"
+                  >
+                    Show more products
+                  </button>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="border border-slate-200 bg-white px-6 py-16 text-center">
+              <HugeiconsIcon
+                icon={Search01Icon}
+                size={30}
+                strokeWidth={1.5}
+                className="mx-auto text-slate-300"
+              />
+              <p className="mt-3 text-sm font-medium text-slate-800">No products found</p>
+              <p className="mt-1 text-[13px] text-slate-500">
+                {hasActiveFilters
+                  ? "Try a different search term or clear the filters."
+                  : "No products are listed right now. Please check back later."}
+              </p>
+              {hasActiveFilters && (
+                <button
+                  onClick={clearFilters}
+                  className="mt-4 h-9 rounded-sm bg-brand-700 px-4 text-[13px] font-medium text-white hover:bg-brand-800"
+                >
+                  Clear filters
+                </button>
+              )}
+            </div>
           )}
         </div>
+      </div>
 
-        {/* Main Products Section */}
-        <section className="py-12 bg-transparent">
-          <div className="container px-4 mx-auto">
-            <div className="text-center mb-10">
-              <div className="inline-flex items-center rounded-full bg-orange-100 px-4 py-2 text-sm font-medium text-orange-700 mb-4">
-               
-                All Products
-              </div>
-              <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Complete Collection</h2>
-              <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-                Browse our complete product catalog
-              </p>
+      {/* Eligibility notice, shown once per browser */}
+      <Dialog
+        open={showEligibilityNotice}
+        onOpenChange={(open) => {
+          if (!open) dismissEligibilityNotice();
+        }}
+      >
+        <DialogContent className="sm:max-w-[440px]" showCloseButton={false}>
+          <DialogHeader>
+            <div className="mb-1 flex h-11 w-11 items-center justify-center rounded-full bg-brand-50 text-brand-700">
+              <HugeiconsIcon icon={Shield01Icon} size={22} strokeWidth={1.8} />
             </div>
+            <DialogTitle className="text-lg">Enugu State Government</DialogTitle>
+            <DialogDescription className="leading-6 text-slate-600">
+              This platform is for verified civil servants of Enugu State. You can browse the
+              catalogue freely, but you will need your staff credentials to place an order.
+            </DialogDescription>
+          </DialogHeader>
 
-            {/* Search and Filter Section */}
-            <div className="bg-white rounded-xl shadow-md p-6 mb-8">
-              <div className="flex flex-col lg:flex-row gap-4">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                  <Input
-                    placeholder="Search products by name, description, or tags..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10 py-6 border-gray-200 focus:border-orange-500 focus:ring-orange-500"
-                  />
-                </div>
+          <DialogFooter>
+            <Button
+              onClick={dismissEligibilityNotice}
+              className="w-full rounded-sm bg-brand-700 hover:bg-brand-800 sm:w-auto"
+            >
+              I understand
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-                <div className="flex flex-wrap gap-3">
-                  <Select onValueChange={setPerishableFilter} value={perishableFilter}>
-                    <SelectTrigger className="w-full sm:w-40 py-6 text-[16px] border-gray-200">
-                      <SelectValue placeholder="Filter by type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Types</SelectItem>
-                      <SelectItem value="perishable">Perishable</SelectItem>
-                      <SelectItem value="non-perishable">Non-Perishable</SelectItem>
-                    </SelectContent>
-                  </Select>
+      {isRegularUser && (
+        <ConsentUpload
+          isOpen={showComplianceDialog}
+          onClose={() => setShowComplianceDialog(false)}
+          onUploadSuccess={handleComplianceUploadSuccess}
+          token={user?.token || ""}
+          returnUrl={returnUrl}
+        />
+      )}
 
-                  <Select onValueChange={setSortOption} value={sortOption}>
-                    <SelectTrigger className="w-full sm:w-40 py-6 text-[16px] border-gray-200">
-                      <SelectValue placeholder="Sort by" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="random">Random</SelectItem>
-                      <SelectItem value="name-asc">Name (A-Z)</SelectItem>
-                      <SelectItem value="name-desc">Name (Z-A)</SelectItem>
-                      <SelectItem value="price-asc">Price (Low to High)</SelectItem>
-                      <SelectItem value="price-desc">Price (High to Low)</SelectItem>
-                      <SelectItem value="rating">Top Rated</SelectItem>
-                      <SelectItem value="newest">Newest</SelectItem>
-                    </SelectContent>
-                  </Select>
+      <Dialog
+        open={extensionConfirm.open}
+        onOpenChange={(open) => {
+          if (!open && !isRevertingCartItem) {
+            handleCancelExtensionUsage();
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-[560px]">
+          <DialogHeader>
+            <DialogTitle>Use your extension buffer?</DialogTitle>
+            <DialogDescription>
+              Your purchasing unit does not cover this cart total. You can continue using the
+              extension buffer (10% of salary).
+            </DialogDescription>
+          </DialogHeader>
 
-                  <Button
-                    variant="outline"
-                    className="lg:hidden py-6 border-gray-200"
-                    onClick={() => setMobileFiltersOpen(!mobileFiltersOpen)}
-                  >
-                    <Filter className="h-4 w-4 mr-2" />
-                    Categories
-                  </Button>
-                </div>
-              </div>
-
-             
-             
-
-              
-
-              {/* Active filters */}
-              {(searchQuery || perishableFilter !== "all" || selectedCategory !== "all") && (
-                <div className="flex items-center gap-2 mt-4 pt-4 border-t border-gray-100">
-                  <span className="text-sm text-gray-600">Active filters:</span>
-                  {searchQuery && (
-                    <Badge variant="secondary" className="flex items-center gap-1">
-                      Search: {searchQuery}
-                      <X
-                        className="h-3 w-3 cursor-pointer"
-                        onClick={() => setSearchQuery("")}
-                      />
-                    </Badge>
-                  )}
-                  {perishableFilter !== "all" && (
-                    <Badge variant="secondary" className="flex items-center gap-1">
-                      Type: {perishableFilter}
-                      <X
-                        className="h-3 w-3 cursor-pointer"
-                        onClick={() => setPerishableFilter("all")}
-                      />
-                    </Badge>
-                  )}
-                  {selectedCategory !== "all" && (
-                    <Badge variant="secondary" className="flex items-center gap-1">
-                      Category: {selectedCategory}
-                      <X
-                        className="h-3 w-3 cursor-pointer"
-                        onClick={() => setSelectedCategory("all")}
-                      />
-                    </Badge>
-                  )}
-                </div>
-              )}
+          <dl className="space-y-1.5 border-l-4 border-amber-500 bg-amber-50 p-4 text-sm text-amber-900">
+            <div className="flex justify-between gap-4">
+              <dt>Item added</dt>
+              <dd className="font-medium">{extensionConfirm.productName}</dd>
             </div>
-
-            {/* Results count */}
-            <div className="mb-6 text-sm text-gray-600 flex items-center justify-between">
-              <span>
-                Showing <span className="font-semibold">{finalProducts?.length || 0}</span> of{" "}
-                <span className="font-semibold">{products?.length || 0}</span> products
-              </span>
-              {finalProducts && finalProducts.length > 0 && (
-                <span className="text-green-600">
-                  {Math.ceil(finalProducts.length / 4)} pages
-                </span>
-              )}
+            <div className="flex justify-between gap-4">
+              <dt>Purchasing unit left</dt>
+              <dd className="font-medium">{formatNaira(extensionConfirm.loanUnit)}</dd>
             </div>
-
-            {/* Products Grid */}
-            {isLoadingProducts ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                {[...Array(8)].map((_, i) => (
-                  <Card key={i} className="h-full border-0 shadow-md overflow-hidden">
-                    <CardHeader className="p-0">
-                      <div className="relative h-56 w-full bg-gradient-to-r from-gray-200 to-gray-300 animate-pulse rounded-t-lg" />
-                    </CardHeader>
-                    <CardContent className="pt-4 space-y-3 p-4">
-                      <div className="h-5 bg-gray-200 rounded animate-pulse w-3/4" />
-                      <div className="h-4 bg-gray-200 rounded animate-pulse" />
-                      <div className="h-4 bg-gray-200 rounded animate-pulse w-1/2" />
-                    </CardContent>
-                    <CardFooter className="p-4 pt-0">
-                      <div className="h-10 bg-gray-200 rounded animate-pulse w-full" />
-                    </CardFooter>
-                  </Card>
-                ))}
-              </div>
-            ) : finalProducts && finalProducts.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                {finalProducts.map((product: Product) => (
-                  <ProductCard key={product.id} product={product} />
-                ))}
-              </div>
-            ) : (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="text-center py-16"
-              >
-                <div className="bg-white rounded-xl shadow-md p-12 max-w-md mx-auto">
-                  <div className="bg-gray-100 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-4">
-                    <Search className="h-10 w-10 text-gray-400" />
-                  </div>
-                  <h3 className="text-xl font-semibold text-gray-900 mb-2">No products found</h3>
-                  <p className="text-gray-600 mb-6">
-                    {searchQuery || perishableFilter !== "all" || selectedCategory !== "all"
-                      ? "Try adjusting your search or filter criteria"
-                      : "No products available at the moment"}
-                  </p>
-                  {(searchQuery || perishableFilter !== "all" || selectedCategory !== "all") && (
-                    <Button
-                      onClick={() => {
-                        setSearchQuery("");
-                        setPerishableFilter("all");
-                        setSelectedCategory("all");
-                      }}
-                      className="bg-orange-600 hover:bg-orange-700"
-                    >
-                      Clear all filters
-                    </Button>
-                  )}
-                </div>
-              </motion.div>
-            )}
-          </div>
-        </section>
-
-      
-
-        {/* Compliance Upload Dialog - only for regular users */}
-        {isRegularUser && (
-          <ConsentUpload
-            isOpen={showComplianceDialog}
-            onClose={() => setShowComplianceDialog(false)}
-            onUploadSuccess={handleComplianceUploadSuccess}
-            token={user?.token || ""}
-            returnUrl={returnUrl}
-          />
-        )}
-
-        <Dialog
-          open={extensionConfirm.open}
-          onOpenChange={(open) => {
-            if (!open && !isRevertingCartItem) {
-              handleCancelExtensionUsage();
-            }
-          }}
-        >
-          <DialogContent className="sm:max-w-[560px]">
-            <DialogHeader>
-              <DialogTitle className="text-xl">Use Extension Buffer To Complete This Purchase?</DialogTitle>
-              <DialogDescription>
-                Your purchasing unit cannot fully cover this cart total. Continue with extension buffer (10% of salary)?
-              </DialogDescription>
-            </DialogHeader>
-
-            <div className="space-y-3 rounded-lg border bg-amber-50 p-4">
-              <p className="text-sm text-amber-900"><span className="font-semibold">Item added:</span> {extensionConfirm.productName}</p>
-              <p className="text-sm text-amber-900"><span className="font-semibold">Purchasing unit remaining:</span> {formatCurrency(extensionConfirm.loanUnit)}</p>
-              <p className="text-sm text-amber-900"><span className="font-semibold">Extension buffer available:</span> {formatCurrency(extensionConfirm.extensionRemaining)}</p>
-              <p className="text-sm text-amber-900"><span className="font-semibold">Current cart total:</span> {formatCurrency(extensionConfirm.cartTotal)}</p>
-              <p className="text-sm text-amber-800">If you continue, the extension amount used will be deducted from your next salary cycle.</p>
+            <div className="flex justify-between gap-4">
+              <dt>Extension buffer</dt>
+              <dd className="font-medium">{formatNaira(extensionConfirm.extensionRemaining)}</dd>
             </div>
+            <div className="flex justify-between gap-4">
+              <dt>Cart total</dt>
+              <dd className="font-medium">{formatNaira(extensionConfirm.cartTotal)}</dd>
+            </div>
+            <p className="pt-1 text-[13px]">
+              Anything taken from the buffer is deducted from your next salary cycle.
+            </p>
+          </dl>
 
-            <DialogFooter>
-              <Button variant="outline" onClick={handleCancelExtensionUsage} disabled={isRevertingCartItem}>
-                {isRevertingCartItem ? "Removing item..." : "Cancel And Remove Item"}
-              </Button>
-              <Button className="bg-orange-700 hover:bg-orange-600" onClick={handleContinueWithExtension}>
-                Continue To Cart
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </TooltipProvider>
-
-      <style jsx>{`
-        .scrollbar-hide::-webkit-scrollbar {
-          display: none;
-        }
-        .bg-grid-white {
-          background-image: linear-gradient(to right, rgba(255,255,255,0.1) 1px, transparent 1px),
-            linear-gradient(to bottom, rgba(255,255,255,0.1) 1px, transparent 1px);
-        }
-      `}</style>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={handleCancelExtensionUsage}
+              disabled={isRevertingCartItem}
+            >
+              {isRevertingCartItem ? "Removing item..." : "Cancel and remove item"}
+            </Button>
+            <Button
+              className="bg-brand-700 hover:bg-brand-800"
+              onClick={handleContinueWithExtension}
+            >
+              Continue to cart
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

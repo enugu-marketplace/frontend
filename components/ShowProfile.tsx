@@ -47,12 +47,12 @@ const user = clientSession?.user || serverUser;
   };
 
   return (
-    <div 
-      className="flex items-center gap-2 cursor-pointer mr-8"
+    <div
+      className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 hover:bg-slate-100"
       onClick={handleDashboardClick}
     >
-      <p className="text-green-700 text-[12px] font-bold">My Dashboard</p>
-      <div className="w-[40px] h-[40px] border border-green-700 rounded-full overflow-hidden flex items-center justify-center bg-green-100 text-green-700 font-bold">
+      <p className="hidden text-[13px] font-medium text-slate-700 sm:block">My dashboard</p>
+      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-50 text-[13px] font-semibold text-brand-800 ring-1 ring-brand-200">
         {getInitials(user?.name)}
       </div>
     </div>

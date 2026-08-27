@@ -4,11 +4,9 @@ import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-quer
 import { useInView } from "react-intersection-observer";
 import { useEffect, useState, useMemo } from "react";
 import axios from "axios";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
@@ -18,17 +16,24 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import { Heart, HeartOff, Star, ShoppingCart, AlertCircle, Info, Upload } from "lucide-react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import {
+  Search01Icon,
+  ShoppingCart01Icon,
+  ShoppingBasket01Icon,
+  FavouriteIcon,
+  EyeIcon,
+  Alert01Icon,
+  InformationCircleIcon,
+  Upload01Icon,
+  Leaf01Icon,
+  PackageIcon,
+  Loading03Icon,
+} from "@hugeicons/core-free-icons";
+import { cn } from "@/lib/utils";
 import {
   Tooltip,
   TooltipContent,
@@ -94,36 +99,6 @@ function useCart(token?: string) {
   return { items, itemCount, error, refetch };
 }
 
-function CartPreview({ token }: { token?: string }) {
-  const router = useRouter();
-  const { itemCount, error, refetch } = useCart(token);
-
-  return (
-    <div className="relative">
-      <Button
-        onClick={() => {
-          refetch();
-          router.push("/employee-dashboard/cart");
-        }}
-        className="bg-orange-600 hover:bg-orange-700 relative"
-      >
-        <ShoppingCart className="mr-2 h-4 w-4" />
-        Cart
-        {itemCount > 0 && (
-          <span className="ml-2 bg-red-500 text-white rounded-full h-5 w-5 flex items-center justify-center text-xs">
-            {itemCount}
-          </span>
-        )}
-      </Button>
-      {error && (
-        <span className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full h-5 w-5 flex items-center justify-center text-xs">
-          !
-        </span>
-      )}
-    </div>
-  );
-}
-
 export default function ProductsPage() {
   const [perishableFilter, setPerishableFilter] = useState<string>("all");
   const { data: clientSession } = useSession();
@@ -144,7 +119,6 @@ export default function ProductsPage() {
     cartTotal: 0,
   });
   const [isRevertingCartItem, setIsRevertingCartItem] = useState(false);
-  const [expandedDescriptions, setExpandedDescriptions] = useState<Set<string>>(new Set());
   const { ref, inView } = useInView();
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -327,18 +301,6 @@ export default function ProductsPage() {
     return complianceData?.status === "APPROVED";
   };
 
-  const toggleDescription = (productId: string) => {
-    setExpandedDescriptions(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(productId)) {
-        newSet.delete(productId);
-      } else {
-        newSet.add(productId);
-      }
-      return newSet;
-    });
-  };
-
   const toggleWishlist = async (productId: string) => {
     if (isAdmin) {
       toast.info("Admin users cannot add items to wishlist");
@@ -478,11 +440,8 @@ export default function ProductsPage() {
     );
 
     if (response.status === 200 || response.status === 201) {
-      // Force a complete refetch of the cart
-      await queryClient.refetchQueries({ 
-        queryKey: ['cart', user.token],
-        exact: true,
-      });
+      // refresh every cart badge on screen straight away
+      await queryClient.invalidateQueries({ queryKey: ["cart"] });
 
       const decision = await evaluateCartExtensionDecision(user.token);
 
@@ -558,20 +517,6 @@ export default function ProductsPage() {
     queryClient.invalidateQueries({ queryKey: ["compliance"] });
   };
 
-  const renderStars = (rating: number) => {
-    return Array(5)
-      .fill(0)
-      .map((_, i) => (
-        <Star
-          key={i}
-          size={16}
-          className={
-            i < rating ? "fill-yellow-400 text-yellow-400" : "text-gray-300"
-          }
-        />
-      ));
-  };
-
   const handleImageError = (
     e: React.SyntheticEvent<HTMLImageElement, Event>
   ) => {
@@ -611,312 +556,278 @@ export default function ProductsPage() {
     }
   };
 
+  const productCount = filteredProducts.length;
+
   return (
-    <div className="container py-8">
-      <TooltipProvider>
-        {/* Fixed Cart Icon */}
-      
-{user && (
-  <div className="fixed bottom-6 right-6 z-50">
-    <button
-      onClick={() => router.push("/employee-dashboard/cart")}
-      className="relative bg-orange-600 hover:bg-orange-700 text-white p-4 rounded-full shadow-lg"
-    >
-      <ShoppingCart className="h-6 w-6" />
-      {itemCount > 0 && (
-        <span className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full h-5 w-5 flex items-center justify-center text-xs">
-          {itemCount}
-        </span>
-      )}
-    </button>
-  </div>
-)}
+    <div className="space-y-5">
+      <TooltipProvider delayDuration={200}>
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h1 className="text-xl font-semibold text-slate-900">Products</h1>
+            <p className="mt-1 text-sm text-slate-600">
+              {status === "pending"
+                ? "Loading the catalogue..."
+                : `${productCount} ${productCount === 1 ? "product" : "products"} available to order`}
+            </p>
+          </div>
 
-
-        {/* Header with Cart Button */}
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold">All Products</h1>
-          <CartPreview token={user?.token} />
+          {user && (
+            <Link
+              href="/employee-dashboard/cart"
+              className="flex h-9 items-center gap-2 rounded-sm border border-slate-300 px-3 text-[13px] font-medium text-slate-700 hover:border-brand-600 hover:text-brand-700"
+            >
+              <HugeiconsIcon icon={ShoppingCart01Icon} size={16} strokeWidth={1.8} />
+              Cart
+              {itemCount > 0 && (
+                <span className="rounded-sm bg-brand-700 px-1.5 text-[11px] font-semibold text-white">
+                  {itemCount}
+                </span>
+              )}
+            </Link>
+          )}
         </div>
 
-        {/* Compliance Status Banners */}
-        {!isAdmin && user && (!complianceData || complianceData?.is_compliance_submitted === false) && (
-          <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-6 rounded">
-            <div className="flex items-center">
-              <AlertCircle className="h-5 w-5 mr-2" />
-              <p>Please submit your compliance form to add items to cart.</p>
-              <Button
+        {/* Compliance and role notices */}
+        <div className="space-y-2">
+          {isAdmin && (
+            <p className="flex items-center gap-2 border-l-4 border-violet-500 bg-violet-50 px-3 py-2.5 text-sm text-violet-900">
+              <HugeiconsIcon icon={InformationCircleIcon} size={17} strokeWidth={1.8} />
+              Admin view. Cart and wishlist are disabled.
+            </p>
+          )}
+
+          {!isAdmin && user && (!complianceData || complianceData?.is_compliance_submitted === false) && (
+            <div className="flex flex-wrap items-center gap-3 border-l-4 border-amber-500 bg-amber-50 px-3 py-2.5 text-sm text-amber-900">
+              <HugeiconsIcon icon={Alert01Icon} size={17} strokeWidth={1.8} />
+              Submit your compliance form before you can add items to your cart.
+              <button
                 onClick={() => setShowComplianceDialog(true)}
-                className="ml-4 bg-yellow-600 hover:bg-yellow-700"
-                size="sm"
+                className="ml-auto flex items-center gap-1.5 rounded-sm bg-amber-600 px-3 py-1.5 text-[13px] font-medium text-white hover:bg-amber-700"
               >
-                <Upload className="h-4 w-4 mr-2" />
-                Submit Compliance
-              </Button>
+                <HugeiconsIcon icon={Upload01Icon} size={15} strokeWidth={1.8} />
+                Submit form
+              </button>
             </div>
-          </div>
-        )}
+          )}
 
-        {!isAdmin && user && complianceData?.status === "PENDING" && (
-          <div className="bg-blue-100 border-l-4 border-blue-500 text-blue-700 p-4 mb-6 rounded">
-            <div className="flex items-center">
-              <AlertCircle className="h-5 w-5 mr-2" />
-              <p>
-                Your compliance form is pending admin approval. You cannot add
-                items until approved.
-              </p>
+          {!isAdmin && user && complianceData?.status === "PENDING" && (
+            <p className="flex items-center gap-2 border-l-4 border-sky-500 bg-sky-50 px-3 py-2.5 text-sm text-sky-900">
+              <HugeiconsIcon icon={Alert01Icon} size={17} strokeWidth={1.8} />
+              Your compliance form is awaiting approval. You can browse, but not order yet.
+            </p>
+          )}
+
+          {!isAdmin && user && complianceData?.status === "DENIED" && (
+            <div className="flex flex-wrap items-center gap-3 border-l-4 border-red-500 bg-red-50 px-3 py-2.5 text-sm text-red-900">
+              <HugeiconsIcon icon={Alert01Icon} size={17} strokeWidth={1.8} />
+              Your compliance form was rejected. Please submit a new one.
+              <button
+                onClick={() => setShowComplianceDialog(true)}
+                className="ml-auto flex items-center gap-1.5 rounded-sm bg-red-600 px-3 py-1.5 text-[13px] font-medium text-white hover:bg-red-700"
+              >
+                <HugeiconsIcon icon={Upload01Icon} size={15} strokeWidth={1.8} />
+                Submit new form
+              </button>
             </div>
+          )}
+        </div>
+
+        {/* Toolbar */}
+        <div className="flex flex-wrap items-center gap-2 border border-slate-200 bg-white p-3">
+          <div className="relative min-w-0 flex-1 sm:max-w-xs">
+            <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+              <HugeiconsIcon icon={Search01Icon} size={16} strokeWidth={1.8} />
+            </span>
+            <input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search products"
+              className="h-9 w-full rounded-sm border border-slate-300 pl-9 pr-3 text-[13px] outline-none focus:border-brand-600"
+            />
           </div>
-        )}
 
-        {!isAdmin && user && complianceData?.status === "DENIED" && (
-          <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded">
-            <div className="flex items-center">
-              <AlertCircle className="h-5 w-5 mr-2" />
-              <div>
-                <p className="font-semibold">Compliance Form Rejected</p>
-                <p>Your compliance form was rejected. Please submit a new one.</p>
-                <Button
-                  onClick={() => setShowComplianceDialog(true)}
-                  className="mt-2 bg-red-600 hover:bg-red-700"
-                  size="sm"
-                >
-                  <Upload className="h-4 w-4 mr-2" />
-                  Submit New Compliance
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
+          <select
+            value={perishableFilter}
+            onChange={(e) => setPerishableFilter(e.target.value)}
+            className="h-9 rounded-sm border border-slate-300 bg-white px-2 text-[13px] text-slate-700 outline-none focus:border-brand-600"
+          >
+            <option value="all">All types</option>
+            <option value="perishable">Fresh produce</option>
+            <option value="non-perishable">Pantry staples</option>
+          </select>
 
-        {isAdmin && (
-          <div className="bg-purple-100 border-l-4 border-purple-500 text-purple-700 p-4 mb-6 rounded">
-            <div className="flex items-center">
-              <Info className="h-5 w-5 mr-2" />
-              <p>Admin view: Cart and wishlist features are disabled.</p>
-            </div>
-          </div>
-        )}
-
-        {/* Filters */}
-        <div className="flex flex-col sm:flex-row gap-4 mb-8">
-          <Input
-            placeholder="Search by product name, description, or price..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full sm:w-64"
-          />
-
-          <Select onValueChange={setPerishableFilter} value={perishableFilter}>
-            <SelectTrigger className="w-full sm:w-64">
-              <SelectValue placeholder="Filter by type" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Products</SelectItem>
-              <SelectItem value="perishable">Perishable</SelectItem>
-              <SelectItem value="non-perishable">Non Perishable</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <Select onValueChange={setSortOption} value={sortOption}>
-            <SelectTrigger className="w-full sm:w-64">
-              <SelectValue placeholder="Sort by" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="name-asc">Name (A-Z)</SelectItem>
-              <SelectItem value="name-desc">Name (Z-A)</SelectItem>
-              <SelectItem value="price-asc">Price (Low to High)</SelectItem>
-              <SelectItem value="price-desc">Price (High to Low)</SelectItem>
-            </SelectContent>
-          </Select>
+          <select
+            value={sortOption}
+            onChange={(e) => setSortOption(e.target.value)}
+            className="h-9 rounded-sm border border-slate-300 bg-white px-2 text-[13px] text-slate-700 outline-none focus:border-brand-600"
+          >
+            <option value="name-asc">Name A-Z</option>
+            <option value="name-desc">Name Z-A</option>
+            <option value="price-asc">Cheapest first</option>
+            <option value="price-desc">Most expensive</option>
+          </select>
         </div>
 
         {status === "pending" ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[...Array(6)].map((_, i) => (
-              <Card key={i} className="h-full border-0 shadow-md">
-                <CardHeader className="p-0">
-                  <div className="relative h-60 w-full bg-gray-200 animate-pulse" />
-                </CardHeader>
-                <CardContent className="pt-4 space-y-2 p-5">
-                  <div className="h-6 bg-gray-200 rounded animate-pulse w-3/4" />
-                  <div className="h-4 bg-gray-200 rounded animate-pulse" />
-                  <div className="h-4 bg-gray-200 rounded animate-pulse w-1/2" />
-                </CardContent>
-              </Card>
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+            {[...Array(8)].map((_, i) => (
+              <div key={i} className="border border-slate-200 bg-white">
+                <div className="aspect-square w-full animate-pulse bg-slate-100" />
+                <div className="space-y-2 p-3">
+                  <div className="h-3.5 w-4/5 animate-pulse rounded bg-slate-100" />
+                  <div className="h-3 w-2/5 animate-pulse rounded bg-slate-100" />
+                  <div className="h-9 w-full animate-pulse rounded bg-slate-100" />
+                </div>
+              </div>
             ))}
           </div>
         ) : status === "error" ? (
-          <div className="text-center py-12">
-            <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded max-w-md mx-auto">
-              <p className="font-bold">Error loading products</p>
-              <p className="text-sm">{error.message}</p>
-              <Button
-                onClick={() => window.location.reload()}
-                className="mt-2 bg-red-600 hover:bg-red-700"
-                size="sm"
-              >
-                Reload Page
-              </Button>
-            </div>
+          <div className="border border-slate-200 bg-white px-6 py-12 text-center">
+            <p className="text-sm font-medium text-slate-800">We could not load the catalogue</p>
+            <p className="mt-1 text-[13px] text-slate-500">{error?.message}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="mt-4 h-9 rounded-sm bg-brand-700 px-4 text-[13px] font-medium text-white hover:bg-brand-800"
+            >
+              Try again
+            </button>
+          </div>
+        ) : filteredProducts.length === 0 ? (
+          <div className="border border-slate-200 bg-white px-6 py-14 text-center">
+            <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-400">
+              <HugeiconsIcon icon={Search01Icon} size={24} strokeWidth={1.5} />
+            </span>
+            <p className="mt-3 text-sm font-medium text-slate-800">No products found</p>
+            <p className="mt-1 text-[13px] text-slate-500">
+              Try a different search term or filter.
+            </p>
           </div>
         ) : (
           <>
-            {filteredProducts.length === 0 ? (
-              <div className="text-center py-12">
-                <p className="text-gray-500">
-                  No products found matching your filters.
-                </p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredProducts.map((product: Product) => {
-                  const isDescriptionExpanded = expandedDescriptions.has(product.id);
-                  const truncatedDescription = product.description.length > 100 
-                    ? product.description.substring(0, 100) + '...' 
-                    : product.description;
+            <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+              {filteredProducts.map((product: Product) => (
+                <article
+                  key={product.id}
+                  className="flex flex-col border border-slate-200 bg-white transition-colors hover:border-brand-600"
+                >
+                  <div className="relative aspect-square w-full">
+                    <Link href={`/employee-dashboard/products/${product.id}`} className="block h-full w-full">
+                      {product.product_image ? (
+                        <Image
+                          src={product.product_image}
+                          alt={product.name}
+                          fill
+                          sizes="(max-width: 640px) 50vw, 25vw"
+                          className="object-contain p-3"
+                          onError={handleImageError}
+                        />
+                      ) : (
+                        <span className="flex h-full w-full items-center justify-center bg-slate-50 text-slate-300">
+                          <HugeiconsIcon icon={ShoppingBasket01Icon} size={30} strokeWidth={1.3} />
+                        </span>
+                      )}
+                    </Link>
 
-                  return (
-                    <Card
-                      key={product.id}
-                      className="h-full flex flex-col overflow-hidden border-0 shadow-md"
+                    {!isAdmin && (
+                      <button
+                        onClick={() => toggleWishlist(product.id)}
+                        disabled={isWishlistLoading || isAdmin}
+                        title="Save for later"
+                        className={cn(
+                          "absolute right-2 top-2 rounded-full bg-white/90 p-1.5 disabled:opacity-40",
+                          wishlistItems.includes(product.id)
+                            ? "text-red-600"
+                            : "text-slate-400 hover:text-red-600"
+                        )}
+                      >
+                        <HugeiconsIcon icon={FavouriteIcon} size={17} strokeWidth={1.8} />
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="flex flex-1 flex-col border-t border-slate-100 p-3">
+                    <Link
+                      href={`/employee-dashboard/products/${product.id}`}
+                      className="line-clamp-2 min-h-10 text-[13px] leading-5 text-slate-700 hover:text-brand-700"
                     >
-                      <CardHeader className="p-0 relative">
-                        <div className="relative h-60 w-full">
-                          <Image
-                            src={
-                              product.product_image || "/placeholder-product.jpg"
-                            }
-                            alt={product.name}
-                            fill
-                            className="object-contain w-full h-full p-4 bg-white"
-                            onError={handleImageError}
-                            style={{ objectFit: "contain" }}
-                          />
-                          <button
-                            onClick={() => toggleWishlist(product.id)}
-                            className="absolute top-3 right-3 p-2 bg-white rounded-full shadow-md hover:bg-gray-100 transition-colors z-10"
-                            aria-label="Add to wishlist"
-                            disabled={isWishlistLoading || isAdmin}
-                          >
-                            {wishlistItems.includes(product.id) ? (
-                              <HeartOff size={20} className="text-red-500" />
-                            ) : (
-                              <Heart size={20} className="text-gray-600" />
-                            )}
-                          </button>
+                      {product.name}
+                    </Link>
 
-                          {product.active && (
-                            <div className="absolute top-3 left-3 bg-green-100 text-green-800 text-xs px-2 py-1 rounded">
-                              In Stock
-                            </div>
-                          )}
-                        </div>
-                      </CardHeader>
-                      <CardContent className="pt-4 flex flex-col flex-grow p-5">
-                        <div className="flex justify-between items-start mb-2">
-                          <h3 className="font-bold text-lg">{product.name}</h3>
-                          <span
-                            className={`text-xs px-2 py-1 rounded ${
-                              product.isPerishable
-                                ? "bg-green-100 text-green-800"
-                                : "bg-blue-100 text-blue-800"
-                            }`}
-                          >
-                            {product.isPerishable
-                              ? "Perishable"
-                              : "Non-Perishable"}
-                          </span>
-                        </div>
+                    <p className="mt-1.5 text-base font-semibold text-slate-900">
+                      {new Intl.NumberFormat("en-NG", {
+                        style: "currency",
+                        currency: product.currency || "NGN",
+                        currencyDisplay: "narrowSymbol",
+                        maximumFractionDigits: 0,
+                      }).format(product.basePrice)}
+                    </p>
 
-                        <div className="flex items-center mb-3">
-                          <div className="flex mr-1">
-                            {renderStars(product.rating || 5)}
-                          </div>
-                          <span className="text-xs text-gray-600">
-                            ({product.reviewCount || 2})
-                          </span>
-                        </div>
+                    <p className="mt-0.5 flex items-center gap-1 text-[11px] text-slate-500">
+                      <HugeiconsIcon
+                        icon={product.isPerishable ? Leaf01Icon : PackageIcon}
+                        size={12}
+                        strokeWidth={2}
+                      />
+                      {product.isPerishable ? "Fresh" : "Pantry"}
+                    </p>
 
-                        <p className="text-sm text-gray-600 mb-4 flex-grow">
-                          {isDescriptionExpanded ? product.description : truncatedDescription}
-                          {product.description.length > 100 && (
+                    <div className="mt-3 flex items-center gap-2">
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div className="flex-1">
                             <button
-                              onClick={() => toggleDescription(product.id)}
-                              className="text-orange-600 hover:text-orange-700 ml-1 text-sm font-medium"
+                              onClick={() => addToCart(product)}
+                              disabled={!isCartActionAllowed() || isAddingToCart || isAdmin}
+                              className="flex h-9 w-full items-center justify-center gap-1.5 rounded-sm bg-brand-700 text-[13px] font-medium text-white hover:bg-brand-800 disabled:bg-slate-200 disabled:text-slate-500"
                             >
-                              {isDescriptionExpanded ? "View less" : "View more"}
+                              <HugeiconsIcon icon={ShoppingCart01Icon} size={16} strokeWidth={1.8} />
+                              {isAddingToCart ? "Adding..." : "Add to cart"}
                             </button>
-                          )}
-                        </p>
-
-                        <div className="mt-auto">
-                          <div className="mb-4">
-                            <span className="font-bold text-lg">
-                              {new Intl.NumberFormat("en-NG", {
-                                style: "currency",
-                                currency: product.currency,
-                                currencyDisplay: "narrowSymbol",
-                              }).format(product.basePrice)}
-                            </span>
                           </div>
+                        </TooltipTrigger>
+                        {(!isCartActionAllowed() || isAdmin) && (
+                          <TooltipContent side="top" className="max-w-xs">
+                            {getComplianceStatusMessage()}
+                          </TooltipContent>
+                        )}
+                      </Tooltip>
 
-                          <div className="flex flex-col gap-2">
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  className="w-full bg-orange-700 hover:bg-orange-600 h-11 font-bold"
-                                  onClick={() => addToCart(product)}
-                                  disabled={!isCartActionAllowed() || isAddingToCart || isAdmin}
-                                >
-                                  {isAddingToCart ? "Adding..." : "Add to Cart"}
-                                </Button>
-                              </TooltipTrigger>
-                              {(!isCartActionAllowed() || isAdmin) && (
-                                <TooltipContent side="top" className="max-w-xs">
-                                  <p>{getComplianceStatusMessage()}</p>
-                                </TooltipContent>
-                              )}
-                            </Tooltip>
-
-                            <Button
-                              asChild
-                              variant="outline"
-                              className="w-full h-11"
-                            >
-                              <Link href={`/employee-dashboard/products/${product.id}`}>
-                                View Details
-                              </Link>
-                            </Button>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
-              </div>
-            )}
+                      <Link
+                        href={`/employee-dashboard/products/${product.id}`}
+                        title="View details"
+                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm border border-slate-300 text-slate-600 hover:border-brand-600 hover:text-brand-700"
+                      >
+                        <HugeiconsIcon icon={EyeIcon} size={17} strokeWidth={1.8} />
+                      </Link>
+                    </div>
+                  </div>
+                </article>
+              ))}
+            </div>
 
             {filteredProducts.length > 0 &&
               perishableFilter === "all" &&
               searchQuery === "" && (
-                <div
-                  ref={ref}
-                  className="h-10 flex items-center justify-center mt-8"
-                >
+                <div ref={ref} className="flex justify-center py-2">
                   {isFetchingNextPage ? (
-                    <div className="flex items-center space-x-2">
-                      <div className="w-4 h-4 border-2 border-primary rounded-full animate-spin" />
-                      <span>Loading more products...</span>
-                    </div>
+                    <span className="flex items-center gap-2 text-[13px] text-slate-500">
+                      <HugeiconsIcon
+                        icon={Loading03Icon}
+                        size={15}
+                        strokeWidth={2}
+                        className="animate-spin"
+                      />
+                      Loading more products
+                    </span>
                   ) : hasNextPage ? (
-                    <Button variant="outline" onClick={() => fetchNextPage()}>
-                      Load More
-                    </Button>
+                    <button
+                      onClick={() => fetchNextPage()}
+                      className="h-9 rounded-sm border border-slate-300 px-4 text-[13px] font-medium text-slate-700 hover:border-brand-600 hover:text-brand-700"
+                    >
+                      Show more products
+                    </button>
                   ) : (
-                    <p className="text-sm text-gray-500">
-                      No more products to load
-                    </p>
+                    <p className="text-[13px] text-slate-500">That is the whole catalogue.</p>
                   )}
                 </div>
               )}
@@ -930,7 +841,7 @@ export default function ProductsPage() {
             onClose={() => setShowComplianceDialog(false)}
             onUploadSuccess={handleComplianceUploadSuccess}
             token={user?.token || ""}
-            returnUrl={window.location.pathname}
+            returnUrl="/employee-dashboard/products"
           />
         )}
 
@@ -944,29 +855,34 @@ export default function ProductsPage() {
         >
           <DialogContent className="sm:max-w-[560px]">
             <DialogHeader>
-              <DialogTitle className="text-xl">Use Extension Buffer To Complete This Purchase?</DialogTitle>
-              <DialogDescription className="text-sm">
-                Your purchasing unit cannot fully cover this cart total. You can continue using your extension buffer (10% of salary).
+              <DialogTitle>Use your extension buffer?</DialogTitle>
+              <DialogDescription>
+                Your purchasing unit does not cover this cart total. You can continue using the
+                extension buffer (10% of salary).
               </DialogDescription>
             </DialogHeader>
 
-            <div className="space-y-3 rounded-lg border bg-amber-50 p-4">
-              <p className="text-sm text-amber-900">
-                <span className="font-semibold">Item added:</span> {extensionConfirm.productName}
+            <dl className="space-y-1.5 border-l-4 border-amber-500 bg-amber-50 p-4 text-sm text-amber-900">
+              <div className="flex justify-between gap-4">
+                <dt>Item added</dt>
+                <dd className="font-medium">{extensionConfirm.productName}</dd>
+              </div>
+              <div className="flex justify-between gap-4">
+                <dt>Purchasing unit left</dt>
+                <dd className="font-medium">{formatCurrency(extensionConfirm.loanUnit)}</dd>
+              </div>
+              <div className="flex justify-between gap-4">
+                <dt>Extension buffer</dt>
+                <dd className="font-medium">{formatCurrency(extensionConfirm.extensionRemaining)}</dd>
+              </div>
+              <div className="flex justify-between gap-4">
+                <dt>Cart total</dt>
+                <dd className="font-medium">{formatCurrency(extensionConfirm.cartTotal)}</dd>
+              </div>
+              <p className="pt-1 text-[13px]">
+                Anything taken from the buffer is deducted from your next salary cycle.
               </p>
-              <p className="text-sm text-amber-900">
-                <span className="font-semibold">Purchasing unit remaining:</span> {formatCurrency(extensionConfirm.loanUnit)}
-              </p>
-              <p className="text-sm text-amber-900">
-                <span className="font-semibold">Extension buffer available:</span> {formatCurrency(extensionConfirm.extensionRemaining)}
-              </p>
-              <p className="text-sm text-amber-900">
-                <span className="font-semibold">Current cart total:</span> {formatCurrency(extensionConfirm.cartTotal)}
-              </p>
-              <p className="text-sm text-amber-800">
-                If you continue, the extension amount used will be deducted from your next salary cycle.
-              </p>
-            </div>
+            </dl>
 
             <DialogFooter>
               <Button
@@ -974,10 +890,13 @@ export default function ProductsPage() {
                 onClick={handleCancelExtensionUsage}
                 disabled={isRevertingCartItem}
               >
-                {isRevertingCartItem ? "Removing item..." : "Cancel And Remove Item"}
+                {isRevertingCartItem ? "Removing item..." : "Cancel and remove item"}
               </Button>
-              <Button className="bg-orange-700 hover:bg-orange-600" onClick={handleContinueWithExtension}>
-                Continue To Cart
+              <Button
+                className="bg-brand-700 hover:bg-brand-800"
+                onClick={handleContinueWithExtension}
+              >
+                Continue to cart
               </Button>
             </DialogFooter>
           </DialogContent>

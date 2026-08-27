@@ -8,7 +8,8 @@ import {
   AreaChart,
   Area
 } from "recharts";
-import { TrendingUp } from "lucide-react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { ChartLineData01Icon } from "@hugeicons/core-free-icons";
 
 // COLORS
 const COLORS = {
@@ -118,7 +119,7 @@ export function MonthlyOrdersChart({ orders }: { orders: any[] }) {
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg">Monthly Orders</CardTitle>
-          <TrendingUp className="h-5 w-5 text-primary" />
+          <HugeiconsIcon icon={ChartLineData01Icon} size={18} strokeWidth={1.8} className="text-brand-700" />
         </div>
       </CardHeader>
       <CardContent className="h-[300px]">
@@ -218,7 +219,7 @@ export function OrderTrendsChart({ orders }: { orders: any[] }) {
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg">Order Trends</CardTitle>
-          <TrendingUp className="h-5 w-5 text-primary" />
+          <HugeiconsIcon icon={ChartLineData01Icon} size={18} strokeWidth={1.8} className="text-brand-700" />
         </div>
       </CardHeader>
       <CardContent className="h-[300px]">

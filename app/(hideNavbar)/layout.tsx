@@ -7,12 +7,16 @@ import Header from "@/components/Header";
 import StatusCheckWrapper from "@/components/StatusCheckWrapper";
 import { Suspense } from "react";
 import { Toaster } from "sonner";
+import { outfit } from "@/lib/fonts";
 
 export const metadata: Metadata = {
   title: "Enugu Food Scheme",
   description: "Food Loan Scheme for Enugu State Workers",
   icons: {
-    icon: "/favicon.ico",
+    icon: [
+      { url: "/logo-mark.svg", type: "image/svg+xml" },
+      { url: "/favicon.ico" },
+    ],
   },
 };
 
@@ -22,8 +26,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body suppressHydrationWarning className=" font-header">
+    <html lang="en" className={outfit.variable}>
+      <body suppressHydrationWarning className="font-header antialiased">
         <Providers>
          
           <Toaster position="top-right" richColors style={{ zIndex: 10000 }} />

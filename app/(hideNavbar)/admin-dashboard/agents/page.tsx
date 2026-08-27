@@ -11,18 +11,23 @@ const Page = async () => {
   
   // Redirect if not authenticated
   if (!session) {
-    redirect("/auth/signin");
+    redirect('/admin-login?callbackUrl=/admin-dashboard');
   }
   
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold mb-6">Create Fulfillment Officer</h1>
-      <CreateFulfillmentOfficerDialog 
-        token={session.user?.token || undefined} 
-       
-      />
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-semibold text-slate-900">Fulfillment agents</h1>
+          <p className="mt-1 text-sm text-slate-600">Officers who verify deliveries and hand orders over to staff.</p>
+        </div>
+
+        <CreateFulfillmentOfficerDialog token={session.user?.token || undefined} />
+      </div>
+
+      
     </div>
   );
-};
+}
 
 export default Page;

@@ -13,7 +13,8 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { DownloadCloud } from "lucide-react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { CloudUploadIcon } from "@hugeicons/core-free-icons";
 import { useRouter } from "next/navigation";
 
 interface UploadUsersDialogProps {
@@ -632,9 +633,9 @@ export function UploadUsersDialog({ token }: UploadUsersDialogProps) {
               variant="ghost"
               size="sm"
               onClick={downloadTemplate}
-              className="text-blue-600"
+              className="text-brand-700"
             >
-              <DownloadCloud className="h-4 w-4 mr-2" />
+              <HugeiconsIcon icon={CloudUploadIcon} size={16} strokeWidth={1.8} className="mr-2" />
               Download Template
             </Button>
           </div>

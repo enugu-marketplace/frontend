@@ -4,6 +4,7 @@
 import { useState, useEffect } from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Order } from '@/types/order';
 
 interface OrdersFilterProps {
@@ -65,6 +66,7 @@ const getOrderCycleYearMonth = (placedAt: string): { year: string; month: string
 export default function OrdersFilter({ orders, onFilterChange, onSelectionChange }: OrdersFilterProps) {
   const [selectedYear, setSelectedYear] = useState<string>('all');
   const [selectedMonth, setSelectedMonth] = useState<string>('all');
+  const [searchTerm, setSearchTerm] = useState<string>('');
   const [availableYears, setAvailableYears] = useState<number[]>([]);
   const [availableMonths, setAvailableMonths] = useState<{ value: string; label: string }[]>([]);
 
@@ -135,8 +137,29 @@ export default function OrdersFilter({ orders, onFilterChange, onSelectionChange
       });
     }
 
+    const normalizedSearch = searchTerm.trim().toLowerCase();
+    if (normalizedSearch) {
+      filtered = filtered.filter(order => {
+        const fullName = `${order.user?.firstname ?? ''} ${order.user?.lastname ?? ''}`.trim().toLowerCase();
+        const orderId = String(order.id ?? '').toLowerCase();
+        const shortOrderId = orderId.slice(0, 8);
+        const phone = String(order.user?.phone ?? '').toLowerCase();
+        const userId = String(order.userId ?? '').toLowerCase();
+        const status = String(order.orderStatus ?? '').toLowerCase();
+
+        return (
+          fullName.includes(normalizedSearch) ||
+          orderId.includes(normalizedSearch) ||
+          shortOrderId.includes(normalizedSearch) ||
+          phone.includes(normalizedSearch) ||
+          userId.includes(normalizedSearch) ||
+          status.includes(normalizedSearch)
+        );
+      });
+    }
+
     onFilterChange(filtered);
-  }, [selectedYear, selectedMonth, orders, onFilterChange]);
+  }, [selectedYear, selectedMonth, searchTerm, orders, onFilterChange]);
 
   useEffect(() => {
     onSelectionChange?.({ year: selectedYear, month: selectedMonth });
@@ -145,12 +168,23 @@ export default function OrdersFilter({ orders, onFilterChange, onSelectionChange
   const clearFilters = () => {
     setSelectedYear('all');
     setSelectedMonth('all');
+    setSearchTerm('');
   };
 
-  const hasActiveFilters = selectedYear !== 'all' || selectedMonth !== 'all';
+  const hasActiveFilters = selectedYear !== 'all' || selectedMonth !== 'all' || !!searchTerm.trim();
 
   return (
     <div className="flex flex-col sm:flex-row gap-4 items-end mb-6 p-4 border rounded-lg bg-gray-50">
+      <div className="flex-1 w-full">
+        <label className="text-sm font-medium mb-2 block">Search Orders</label>
+        <Input
+          value={searchTerm}
+          onChange={(event) => setSearchTerm(event.target.value)}
+          placeholder="Search by name, order ID, phone, user ID, or status"
+          className="w-full"
+        />
+      </div>
+
       <div className="flex-1">
         <label className="text-sm font-medium mb-2 block">Filter by Year</label>
         <Select value={selectedYear} onValueChange={setSelectedYear}>

@@ -145,7 +145,7 @@ export function CreateProductDialog({ token, onSuccess }: { token: string; onSuc
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className='bg-green-700 hover:bg-green-600 w-full sm:w-auto' size="sm">
+        <Button className='bg-brand-700 hover:bg-brand-800 w-full sm:w-auto' size="sm">
           Create New Product
         </Button>
       </DialogTrigger>

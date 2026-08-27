@@ -11,7 +11,7 @@ export default async function AdminLayout({
   const session = await getServerSession(authOptions);
   
   if (!session) {
-    return redirect("/auth/signin");
+    return redirect("/admin-login?callbackUrl=/admin-dashboard");
   }
 
   if (session.user.role !== "super_admin") {

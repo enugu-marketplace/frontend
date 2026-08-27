@@ -2,7 +2,6 @@
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Image from 'next/image';
 import { Badge } from '@/components/ui/badge';
@@ -125,16 +124,16 @@ export function ProductDetails({ productId, token }: ProductDetailsProps) {
       {/* Main Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         {/* Product Images Card */}
-        <Card className="w-full">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg sm:text-xl">Images</CardTitle>
-          </CardHeader>
-          <CardContent>
+        <div className="border border-slate-200 bg-white">
+          <div className="border-b border-slate-200 px-4 py-3">
+            <p className="text-[13px] font-semibold uppercase tracking-wide text-slate-600">Images</p>
+          </div>
+          <div className="p-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               {/* Main Image */}
               {product.product_image ? (
                 <div className="space-y-2">
-                  <p className="text-sm font-medium text-gray-500">Main Image</p>
+                  <p className="text-sm font-medium text-slate-500">Main Image</p>
                   <div className="relative aspect-square w-full">
                     <Image
                       src={product.product_image}
@@ -148,16 +147,16 @@ export function ProductDetails({ productId, token }: ProductDetailsProps) {
                 </div>
               ) : (
                 <div className="space-y-2">
-                  <p className="text-sm font-medium text-gray-500">Main Image</p>
-                  <div className="relative aspect-square bg-gray-100 rounded-lg flex items-center justify-center">
-                    <span className="text-gray-500 text-sm">No main image</span>
+                  <p className="text-sm font-medium text-slate-500">Main Image</p>
+                  <div className="relative aspect-square bg-slate-100 rounded-lg flex items-center justify-center">
+                    <span className="text-slate-500 text-sm">No main image</span>
                   </div>
                 </div>
               )}
               
               {/* Additional Images */}
               <div className="space-y-2">
-                <p className="text-sm font-medium text-gray-500">Additional Images</p>
+                <p className="text-sm font-medium text-slate-500">Additional Images</p>
                 {product.images && product.images.length > 0 ? (
                   <div className="grid grid-cols-2 gap-2 sm:gap-3">
                     {product.images.map((image: string, index: number) => (
@@ -173,33 +172,33 @@ export function ProductDetails({ productId, token }: ProductDetailsProps) {
                     ))}
                   </div>
                 ) : (
-                  <div className="relative aspect-square bg-gray-100 rounded-lg flex items-center justify-center">
-                    <span className="text-gray-500 text-sm">No additional images</span>
+                  <div className="relative aspect-square bg-slate-100 rounded-lg flex items-center justify-center">
+                    <span className="text-slate-500 text-sm">No additional images</span>
                   </div>
                 )}
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
         {/* Product Information Card */}
-        <Card className="w-full">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg sm:text-xl">Product Information</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4 sm:space-y-6">
+        <div className="border border-slate-200 bg-white">
+          <div className="border-b border-slate-200 px-4 py-3">
+            <p className="text-[13px] font-semibold uppercase tracking-wide text-slate-600">Product Information</p>
+          </div>
+          <div className="space-y-4 p-4">
             {/* Basic Info */}
             <div className="space-y-3">
               <div className="space-y-2">
                 <h2 className="text-lg sm:text-xl font-semibold leading-tight">{product.name}</h2>
-                <p className="text-gray-600 text-sm sm:text-base leading-relaxed">{product.description}</p>
+                <p className="text-slate-600 text-sm sm:text-base leading-relaxed">{product.description}</p>
               </div>
             </div>
 
             {/* Product Details Grid */}
             <div className="grid grid-cols-1 xs:grid-cols-2 gap-3 sm:gap-4">
               <div className="space-y-1">
-                <p className="text-xs sm:text-sm text-gray-500">Base Price</p>
+                <p className="text-xs sm:text-sm text-slate-500">Base Price</p>
                 <p className="font-medium text-sm sm:text-base">
                   {new Intl.NumberFormat('en-NG', {
                     style: 'currency',
@@ -209,17 +208,17 @@ export function ProductDetails({ productId, token }: ProductDetailsProps) {
               </div>
 
               <div className="space-y-1">
-                <p className="text-xs sm:text-sm text-gray-500">Brand</p>
+                <p className="text-xs sm:text-sm text-slate-500">Brand</p>
                 <p className="font-medium text-sm sm:text-base">{product.brand || 'No brand'}</p>
               </div>
 
               <div className="space-y-1">
-                <p className="text-xs sm:text-sm text-gray-500">Category</p>
+                <p className="text-xs sm:text-sm text-slate-500">Category</p>
                 <p className="font-medium text-sm sm:text-base">{product.category?.name || 'No category'}</p>
               </div>
 
               <div className="space-y-1">
-                <p className="text-xs sm:text-sm text-gray-500">Status</p>
+                <p className="text-xs sm:text-sm text-slate-500">Status</p>
                 <Badge 
                   variant={product.active ? 'default' : 'destructive'} 
                   className="text-xs sm:text-sm"
@@ -229,7 +228,7 @@ export function ProductDetails({ productId, token }: ProductDetailsProps) {
               </div>
 
               <div className="space-y-1">
-                <p className="text-xs sm:text-sm text-gray-500">Perishable</p>
+                <p className="text-xs sm:text-sm text-slate-500">Perishable</p>
                 <Badge 
                   variant={product.isPerishable ? 'default' : 'secondary'} 
                   className="text-xs sm:text-sm"
@@ -240,18 +239,18 @@ export function ProductDetails({ productId, token }: ProductDetailsProps) {
 
               {product.isPerishable && product.shelfLifeDays && (
                 <div className="space-y-1">
-                  <p className="text-xs sm:text-sm text-gray-500">Shelf Life</p>
+                  <p className="text-xs sm:text-sm text-slate-500">Shelf Life</p>
                   <p className="font-medium text-sm sm:text-base">{product.shelfLifeDays} days</p>
                 </div>
               )}
 
               <div className="space-y-1">
-                <p className="text-xs sm:text-sm text-gray-500">Unit</p>
+                <p className="text-xs sm:text-sm text-slate-500">Unit</p>
                 <p className="font-medium text-sm sm:text-base">{product.unit}</p>
               </div>
 
               <div className="space-y-1">
-                <p className="text-xs sm:text-sm text-gray-500">Package Type</p>
+                <p className="text-xs sm:text-sm text-slate-500">Package Type</p>
                 <p className="font-medium text-sm sm:text-base">{product.packageType}</p>
               </div>
             </div>
@@ -259,20 +258,20 @@ export function ProductDetails({ productId, token }: ProductDetailsProps) {
             {/* Timestamps */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 pt-3 sm:pt-4 border-t">
               <div className="space-y-1">
-                <p className="text-xs sm:text-sm text-gray-500">Created At</p>
+                <p className="text-xs sm:text-sm text-slate-500">Created At</p>
                 <p className="text-xs sm:text-sm font-medium">
                   {format(new Date(product.createdAt), 'PPpp')}
                 </p>
               </div>
               <div className="space-y-1">
-                <p className="text-xs sm:text-sm text-gray-500">Last Updated</p>
+                <p className="text-xs sm:text-sm text-slate-500">Last Updated</p>
                 <p className="text-xs sm:text-sm font-medium">
                   {format(new Date(product.updatedAt), 'PPpp')}
                 </p>
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     </div>
   );
