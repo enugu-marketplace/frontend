@@ -87,10 +87,10 @@ export default function AuthShell({
 
           {footer && <div className="mt-5 text-sm text-slate-600">{footer}</div>}
 
-          <p className="mt-10 flex items-center gap-1.5 border-t border-slate-200 pt-4 text-[13px] text-slate-500">
+          {/* <p className="mt-10 flex items-center gap-1.5 border-t border-slate-200 pt-4 text-[13px] text-slate-500">
             <HugeiconsIcon icon={Call02Icon} size={14} strokeWidth={2} />
             Trouble signing in? Call 0800 3684 8
-          </p>
+          </p> */}
         </div>
       </main>
     </div>

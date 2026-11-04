@@ -98,7 +98,7 @@ const Header = () => {
             <HugeiconsIcon icon={Shield01Icon} size={14} strokeWidth={2} />
             Official Enugu State Government food scheme
           </span>
-          <span className="flex items-center gap-4">
+          {/* <span className="flex items-center gap-4">
             <Link href="/about" className="hover:underline">
               Help centre
             </Link>
@@ -106,7 +106,7 @@ const Header = () => {
               <HugeiconsIcon icon={Call02Icon} size={14} strokeWidth={2} />
               0800 3684 8
             </span>
-          </span>
+          </span> */}
         </div>
       </div>
 

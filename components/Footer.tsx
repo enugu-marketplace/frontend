@@ -47,7 +47,7 @@ const Footer = () => (
             prices and pay from your salary at 0% interest.
           </p>
 
-          <ul className="mt-4 space-y-2 text-[13px] text-slate-600">
+          {/* <ul className="mt-4 space-y-2 text-[13px] text-slate-600">
             <li className="flex items-start gap-2">
               <HugeiconsIcon icon={Location01Icon} size={15} strokeWidth={1.8} className="mt-0.5" />
               Government House, Enugu, Nigeria
@@ -60,7 +60,7 @@ const Footer = () => (
               <HugeiconsIcon icon={Mail01Icon} size={15} strokeWidth={1.8} />
               support@enugufoodmarket.com
             </li>
-          </ul>
+          </ul> */}
         </div>
 
         {columns.map((column) => (

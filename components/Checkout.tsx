@@ -572,10 +572,10 @@ export default function CheckoutPage() {
               <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-slate-100 text-slate-600">
                 <HugeiconsIcon icon={HelpCircleIcon} size={19} strokeWidth={1.8} />
               </span>
-              <div className="text-[13px]">
+              {/* <div className="text-[13px]">
                 <p className="font-medium text-slate-800">Need help?</p>
                 <p className="text-slate-500">Call the fulfillment office on 0800 3684 8</p>
-              </div>
+              </div> */}
             </div>
           </div>
         </div>
