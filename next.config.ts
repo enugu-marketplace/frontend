@@ -1,7 +1,13 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   trailingSlash: false,
-  
+
+  // Hugeicons ships ~6,000 icons behind one barrel file and isn't in Next's
+  // default list, so without this every icon import pulls in the whole package.
+  experimental: {
+    optimizePackageImports: ["@hugeicons/core-free-icons"],
+  },
+
   async headers() {
     return [
       {

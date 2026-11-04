@@ -314,10 +314,10 @@ export default function OrderConfirmationContent({
             View all orders
           </Link>
 
-          <p className="ml-auto flex items-center gap-1.5 text-[13px] text-slate-500">
+          {/* <p className="ml-auto flex items-center gap-1.5 text-[13px] text-slate-500">
             <HugeiconsIcon icon={HelpCircleIcon} size={15} strokeWidth={1.8} />
             Need help? Call 0800 3684 8
-          </p>
+          </p> */}
         </div>
       </div>
     </div>
