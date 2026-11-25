@@ -1,28 +1,13 @@
 import { NextResponse } from 'next/server';
-import { authApi } from '@/lib/api';
+import { proxyAuthRequest } from '@/lib/api';
 
 export async function POST(request: Request) {
-  try {
-    const { userId, password } = await request.json();
-    
-    if (!userId || !password) {
-      return NextResponse.json(
-        { error: 'User ID and password are required' },
-        { status: 400 }
-      );
-    }
+  const body = await request.json().catch(() => ({}));
+  const { userId, password } = body;
 
-    const response = await authApi('/auth/verify-password', {
-      userId,
-      password
-    });
-
-    return NextResponse.json(response);
-
-  } catch (error: any) {
-    return NextResponse.json(
-      { error: error.message || 'Password verification failed' },
-      { status: 500 }
-    );
+  if (!userId || !password) {
+    return NextResponse.json({ error: 'User ID and password are required', message: 'User ID and password are required' }, { status: 400 });
   }
+
+  return proxyAuthRequest('/auth/verify-password', { userId, password }, 'Password verification failed');
 }

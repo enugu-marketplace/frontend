@@ -31,6 +31,7 @@ export default function VerifyOtp() {
   const searchParams = useSearchParams();
   const userId = searchParams.get("userId");
   const returnUrl = searchParams.get("returnUrl") || "/employee-dashboard";
+  const maskedPhone = searchParams.get("phone");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isResending, setIsResending] = useState(false);
   const [resendDisabled, setResendDisabled] = useState(true);
@@ -78,10 +79,15 @@ export default function VerifyOtp() {
       const data = await response.json();
 
       if (!response.ok) {
+        // Server-side cooldown: restart our timer with the time it asks for
+        if (response.status === 429 && data.retryAfterSeconds) {
+          setResendDisabled(true);
+          setCountdown(Number(data.retryAfterSeconds));
+        }
         throw new Error(data.message || "Failed to resend OTP");
       }
 
-      toast.success("We sent you a new code.");
+      toast.success(data.message || "We sent you a new code.");
       form.reset({ otp: "" });
       setResendDisabled(true);
       setCountdown(RESEND_SECONDS);
@@ -147,10 +153,15 @@ export default function VerifyOtp() {
   return (
     <AuthShell
       title="Enter your verification code"
-      subtitle="We sent a 6-digit code to the phone number on your staff record. It expires shortly, so enter it soon."
+      subtitle={
+        maskedPhone
+          ? `We sent a 6-digit code to ${maskedPhone}, the phone number on your staff record. SMS can take up to a minute to arrive.`
+          : "We sent a 6-digit code to the phone number on your staff record. SMS can take up to a minute to arrive."
+      }
       backHref="/employee-login"
       backLabel="Back to sign in"
       footer={
+        <div className="space-y-2">
         <div className="flex items-center gap-1.5 text-[13px]">
           <span className="text-slate-500">Did not get the code?</span>
           {resendDisabled ? (
@@ -165,6 +176,13 @@ export default function VerifyOtp() {
               {isResending ? "Sending..." : "Send a new code"}
             </button>
           )}
+        </div>
+        {maskedPhone && (
+          <p className="text-[12px] leading-5 text-slate-500">
+            Not your number, or you no longer use it? Contact the scheme administrator to update the
+            phone number on your record.
+          </p>
+        )}
         </div>
       }
     >
