@@ -68,7 +68,8 @@ export default function SetPhoneNumber() {
       const returnUrl = searchParams.get("returnUrl") || "/employee-dashboard";
 
       // After setting the phone number we send them straight to the OTP step
-      window.location.href = `/auth/verify-otp?userId=${userId}&returnUrl=${encodeURIComponent(returnUrl)}`;
+      const phoneParam = data.maskedPhone ? `&phone=${encodeURIComponent(data.maskedPhone)}` : "";
+      window.location.href = `/auth/verify-otp?userId=${userId}${phoneParam}&returnUrl=${encodeURIComponent(returnUrl)}`;
     } catch (error: any) {
       toast.error(error.message || "Phone number setup failed");
       console.error(error);

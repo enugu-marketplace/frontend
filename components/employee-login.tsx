@@ -68,7 +68,8 @@ export default function EmployeeLogin() {
       if (data.nextStep === "set_phone_number") {
         window.location.href = `/auth/set-phone-number?userId=${data.userId}&returnUrl=${encodeURIComponent(returnUrl)}`;
       } else if (data.nextStep === "verify_otp") {
-        window.location.href = `/auth/verify-otp?userId=${data.userId}&returnUrl=${encodeURIComponent(returnUrl)}`;
+        const phoneParam = data.maskedPhone ? `&phone=${encodeURIComponent(data.maskedPhone)}` : "";
+        window.location.href = `/auth/verify-otp?userId=${data.userId}${phoneParam}&returnUrl=${encodeURIComponent(returnUrl)}`;
       } else {
         throw new Error("Unexpected next step from server");
       }

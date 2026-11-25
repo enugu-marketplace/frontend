@@ -1,27 +1,13 @@
 import { NextResponse } from 'next/server';
-import { authApi } from '@/lib/api';
+import { proxyAuthRequest } from '@/lib/api';
 
 export async function POST(request: Request) {
-  try {
-    const { identifier } = await request.json();
-    
-    if (!identifier) {
-      return NextResponse.json(
-        { error: 'Identifier is required' },
-        { status: 400 }
-      );
-    }
+  const body = await request.json().catch(() => ({}));
+  const { identifier } = body;
 
-    const backendResponse = await authApi('/auth/initiate-login', {
-      identifier
-    });
-
-    return NextResponse.json(backendResponse);
-
-  } catch (error: unknown) {
-    return NextResponse.json(
-      { error:  'Authentication failed' },
-      { status: 500 }
-    );
+  if (!identifier) {
+    return NextResponse.json({ error: 'Identifier is required', message: 'Identifier is required' }, { status: 400 });
   }
+
+  return proxyAuthRequest('/auth/initiate-login', { identifier }, 'Could not start sign in');
 }

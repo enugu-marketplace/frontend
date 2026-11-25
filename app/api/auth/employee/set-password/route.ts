@@ -1,29 +1,13 @@
 import { NextResponse } from 'next/server';
-import { authApi } from '@/lib/api';
+import { proxyAuthRequest } from '@/lib/api';
 
 export async function POST(request: Request) {
-  try {
-    const { userId, password, password_confirmation } = await request.json();
-    
-    if (!userId || !password || !password_confirmation) {
-      return NextResponse.json(
-        { error: 'All fields are required' },
-        { status: 400 }
-      );
-    }
+  const body = await request.json().catch(() => ({}));
+  const { userId, password, password_confirmation } = body;
 
-    const response = await authApi('/auth/set-password', {
-      userId,
-      password,
-      password_confirmation
-    });
-
-    return NextResponse.json(response);
-
-  } catch (error: unknown) {
-    return NextResponse.json(
-      { error:  'Password setup failed' },
-      { status: 500 }
-    );
+  if (!userId || !password || !password_confirmation) {
+    return NextResponse.json({ error: 'All fields are required', message: 'All fields are required' }, { status: 400 });
   }
+
+  return proxyAuthRequest('/auth/set-password', { userId, password, password_confirmation }, 'Password setup failed');
 }
